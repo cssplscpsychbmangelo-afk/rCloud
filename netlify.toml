@@ -1,5 +1,5 @@
 [build]
-  base = "rcloud"
+  base = "rcloud/rcloud"
   command = "npm run build"
   publish = ".next"
 
