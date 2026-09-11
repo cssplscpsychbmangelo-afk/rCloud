@@ -1,0 +1,19 @@
+# rCloud — Netlify deployment (Next.js via the official Netlify plugin).
+# No PHP or shared hosting required.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# SPA-style fallbacks are handled by the Next.js plugin;
+# add redirects here only for legacy URLs, e.g.:
+# [[redirects]]
+#   from = "/old-path"
+#   to = "/new-path"
+#   status = 301

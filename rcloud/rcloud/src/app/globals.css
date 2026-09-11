@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   rCloud design tokens
+   Color system per `better-colors`: two oklch ramps (neutral + violet accent),
+   primitives named by hue, semantics named by role. Components only use the
+   semantic tier below.
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* Neutral ramp (violet-tinted near-black) */
+  --color-abyss: oklch(0.115 0.02 292); /* page footer / deepest */
+  --color-night: oklch(0.145 0.02 292); /* page background */
+  --color-panel: oklch(0.185 0.025 292); /* cards */
+  --color-panel-2: oklch(0.225 0.03 292); /* raised tiles inside cards */
+  --color-line: oklch(1 0 0 / 0.09); /* structural borders */
+  --color-line-2: oklch(1 0 0 / 0.16); /* emphasized borders / hover */
+  --color-snow: oklch(0.975 0.008 292); /* primary text (off-white) */
+  --color-mist: oklch(0.78 0.02 292); /* secondary text */
+  --color-dim: oklch(0.63 0.025 292); /* tertiary text */
+
+  /* Violet accent ramp */
+  --color-vio-200: oklch(0.89 0.055 295);
+  --color-vio-300: oklch(0.81 0.1 295);
+  --color-vio-400: oklch(0.72 0.16 295);
+  --color-vio-500: oklch(0.62 0.21 295);
+  --color-vio-600: oklch(0.54 0.22 295);
+  --color-vio-700: oklch(0.45 0.18 295);
+  --color-vio-950: oklch(0.235 0.075 295);
+
+  /* Status ramp (only the statuses the product renders) */
+  --color-ok: oklch(0.79 0.13 155); /* completed / safe */
+  --color-warn: oklch(0.82 0.13 90); /* caution */
+  --color-bad: oklch(0.7 0.17 25); /* cancelled / affected */
+  --color-pend: oklch(0.8 0.05 250); /* pending / neutral */
+}
+
+/* Fonts are registered by next/font (see layout.tsx) */
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-reddit);
+}
+
+html {
+  scrollbar-color: var(--color-vio-700) var(--color-night);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  background-color: var(--color-night);
+  color: var(--color-snow);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--color-vio-500) 45%, transparent);
+  color: var(--color-snow);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-vio-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Tabular figures for budgets and statistics (better-typography) */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   Scroll-reveal enter animation (better-ui: split, staggered, interruptible).
+--------------------------------------------------------------------------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.6s cubic-bezier(0.2, 0, 0, 1),
+    transform 0.6s cubic-bezier(0.2, 0, 0, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .bar-fill {
+    transition: none !important;
+  }
+}
+
+/* Animated metric bars */
+.bar-fill {
+  transition: width 0.9s cubic-bezier(0.2, 0, 0, 1) 0.15s;
+}
+
+/* Tactile press feedback (better-ui: always 0.96) */
+.press:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press:active {
+    transform: none;
+  }
+}
