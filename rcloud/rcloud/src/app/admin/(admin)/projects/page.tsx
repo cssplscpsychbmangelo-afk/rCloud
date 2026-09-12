@@ -26,6 +26,7 @@ import {
 import { StatusBadge } from "@/components/Primitives";
 import { formatPeso } from "@/lib/format";
 import type { ProjectStatus } from "@/lib/types";
+import { ensureSchema } from "@/lib/server/migrate";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export default async function AdminProjectsPage({
   searchParams: Promise<{ edit?: string; error?: string }>;
 }) {
   await requirePermission("content");
+  await ensureSchema();
   const params = await searchParams;
   const session = await getSession();
   const isHeadAdmin = session?.role === "head_admin";

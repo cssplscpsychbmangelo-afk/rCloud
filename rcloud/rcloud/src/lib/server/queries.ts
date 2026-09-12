@@ -19,6 +19,7 @@ import type {
   Resource,
 } from "../types";
 import { site } from "../data/site";
+import { ensureSchema } from "./migrate";
 
 /** Public read model — every public page renders from these queries. */
 
@@ -66,6 +67,7 @@ export async function getOfficers(): Promise<Officer[]> {
 }
 
 export async function getProjects(): Promise<Project[]> {
+  await ensureSchema();
   const rows = await db
     .select()
     .from(projects)
@@ -96,6 +98,7 @@ function mapProject(p: typeof projects.$inferSelect): Project {
 
 /** Totals are always computed from the records — never hand-entered. */
 export async function getBudgetSummary(): Promise<BudgetSummary> {
+  await ensureSchema();
   const [row] = await db.select().from(budget);
   const published = await db
     .select()
