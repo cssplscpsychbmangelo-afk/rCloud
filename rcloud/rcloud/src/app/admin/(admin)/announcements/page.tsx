@@ -28,7 +28,7 @@ export default async function AdminAnnouncementsPage({
 }: {
   searchParams: Promise<{ edit?: string; error?: string }>;
 }) {
-  await requirePermission("content");
+  await requirePermission("announcements");
   const params = await searchParams;
   const rows = await db.select().from(announcements).orderBy(desc(announcements.publishedAt));
   const editing = rows.find((a) => a.id === params?.edit) ?? null;

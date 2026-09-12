@@ -13,10 +13,12 @@ export type Permission =
   | "finance"
   | "constituency"
   /** Sign-in credentials (email / password) — main admin only. */
-  | "account";
+  | "account"
+  | "feature"
+  | "announcements";
 
 export const rolePermissions: Record<Role, Permission[]> = {
-  head_admin: ["content", "finance", "constituency", "account"],
+  head_admin: ["content", "finance", "constituency", "account", "feature", "announcements"],
   moderator: ["content"],
 };
 
