@@ -221,17 +221,36 @@ export default async function HomePage() {
             />
           </Reveal>
           {latestPeriod ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <Reveal>
-                <StatCard label="Apektado ng Baha" value={formatNumber(latestPeriod.baha)} hint={latestPeriod.label} />
+            <>
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                <Reveal>
+                  <StatCard label="Apektado ng Baha" value={formatNumber(latestPeriod.baha)} hint={latestPeriod.label} />
+                </Reveal>
+                <Reveal delay={80}>
+                  <StatCard label="Safe" value={formatNumber(latestPeriod.safe)} hint={latestPeriod.label} />
+                </Reveal>
+                <Reveal delay={160}>
+                  <StatCard label="Walang Internet / Mabagal ang Internet Connection" value={formatNumber(latestPeriod.internet)} hint={latestPeriod.label} />
+                </Reveal>
+              </div>
+
+              {/* Student entry point: view the data and build a personal report */}
+              <Reveal delay={220}>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                  <Link
+                    href="/constituency#student-report"
+                    className={btnPrimary}
+                  >
+                    See the data &amp; create my report
+                    <IconArrowRight size={15} />
+                  </Link>
+                  <p className="text-xs leading-relaxed text-dim">
+                    Pick a date, add your name and section if you need them, and
+                    download the official CSSP LSC Constituency Check PDF.
+                  </p>
+                </div>
               </Reveal>
-              <Reveal delay={80}>
-                <StatCard label="Safe" value={formatNumber(latestPeriod.safe)} hint={latestPeriod.label} />
-              </Reveal>
-              <Reveal delay={160}>
-                <StatCard label="Walang Internet / Mabagal ang Internet Connection" value={formatNumber(latestPeriod.internet)} hint={latestPeriod.label} />
-              </Reveal>
-            </div>
+            </>
           ) : (
             <p className="mt-6 text-sm text-mist">
               Constituency data is temporarily unavailable. Please check again later.

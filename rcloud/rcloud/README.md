@@ -83,6 +83,35 @@ Change passwords before going live. Roles/permissions live in
   "Last updated". If the Sheet cannot be reached the site keeps the last good
   data and shows "Constituency data is temporarily unavailable" only when
   nothing has ever synced.
+
+## Constituency Check PDF report
+
+One fixed report template for every period (`src/lib/server/constituencyReport.ts`,
+drawn with `pdf-lib`). Layout, typography, colours, logo placement, section
+order, captions and footer are identical in every PDF — only the selected
+period, the received figures, the calculated analysis, the optional student
+details and the timestamps change.
+
+- Sections (always in this order): header (logo + CSSP LOCAL STUDENT COUNCIL /
+  CONSTITUENCY CHECK REPORT / Combined Data from CSSP Classes), Report Period,
+  optional Student Information, Constituency Data, Objective Data Analysis,
+  Data Source Statement, Last Updated, footer.
+- `/api/constituency/report` (POST `{ period, name?, section? }`) reads the
+  selected tab from the Sheet (falling back to the last synced figures if the
+  Sheet is unreachable), runs the fixed analysis rules and streams the PDF as
+  an attachment: `CSSP_LSC_Constituency_Check_<Period>.pdf`.
+- The analysis (`src/lib/server/constituencyAnalysis.ts`) is arithmetic only —
+  no narrative, no interpretation, no estimation. Total Reported Responses =
+  Safe + Apektado ng Baha + Walang Internet; shares are
+  (value / Total Reported Responses) x 100 to one decimal. Categories are
+  treated as independently reported: combined figures are labelled as sums of
+  reported responses, never as counts of unique students. Calculations the data
+  cannot support (e.g. percentages when the total is 0) are omitted.
+- Name and section are optional and never auto-filled. Whatever the student
+  types is shown as entered; blank fields are omitted from the PDF entirely.
+- Privacy: only the three consolidated totals ever reach the report — no
+  individual responses, names, student numbers, emails, phone numbers or
+  per-section rows.
 - The Sheet must be shared as "Anyone with the link — Viewer" (no API key or
   service account required; the reader only uses the public read endpoints and
   keeps the Sheet URL out of public markup).

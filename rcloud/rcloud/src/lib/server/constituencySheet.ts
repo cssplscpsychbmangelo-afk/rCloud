@@ -18,6 +18,8 @@ import { unzipSync } from "fflate";
 
 const SHEET_ID_PATTERN = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
 const FETCH_TIMEOUT_MS = 20_000;
+/** Shorter budget for on-demand single-tab reads (PDF report generation). */
+const REPORT_FETCH_TIMEOUT_MS = 8_000;
 
 /** Column letter → the label shown on the public site. */
 export const COLUMN_LABELS = {
@@ -71,12 +73,16 @@ function describeAccessError(status: number): string | null {
     : `Unexpected response from Google (HTTP ${status}).`;
 }
 
-async function fetchSheetResponse(url: string, accept: string): Promise<Response> {
+async function fetchSheetResponse(
+  url: string,
+  accept: string,
+  timeoutMs: number = FETCH_TIMEOUT_MS,
+): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(url, {
       headers: { Accept: accept },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
       cache: "no-store",
     });
   } catch (error) {
@@ -95,8 +101,12 @@ async function fetchSheetResponse(url: string, accept: string): Promise<Response
   return response;
 }
 
-async function getSheetText(url: string, accept: string): Promise<string> {
-  return (await fetchSheetResponse(url, accept)).text();
+async function getSheetText(
+  url: string,
+  accept: string,
+  timeoutMs?: number,
+): Promise<string> {
+  return (await fetchSheetResponse(url, accept, timeoutMs)).text();
 }
 
 async function getSheetBuffer(url: string): Promise<ArrayBuffer> {
@@ -238,6 +248,32 @@ function toTotal(raw: string | undefined): number | null {
 }
 
 /* --------------------------------- reader --------------------------------- */
+
+/**
+ * Reads ONE tab's "Total (All Sections)" row, straight from the Sheet.
+ *
+ * Used by the PDF report generator so a report always reflects the current
+ * contents of the selected tab. Returns null when the tab cannot be reached or
+ * read — callers then fall back to the last synced values instead of failing.
+ * Only the Total row's columns B, C and E are ever looked at.
+ */
+export async function readConstituencyTab(
+  sheetId: string,
+  tab: string,
+  timeoutMs: number = REPORT_FETCH_TIMEOUT_MS,
+): Promise<{ safe: number; baha: number; internet: number } | null> {
+  let csv: string;
+  try {
+    csv = await getSheetText(
+      `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`,
+      "text/csv",
+      timeoutMs,
+    );
+  } catch {
+    return null;
+  }
+  return readTotalsFromCsv(csv);
+}
 
 /**
  * Reads every tab's Total (All Sections) row. Tabs that are missing the row or
