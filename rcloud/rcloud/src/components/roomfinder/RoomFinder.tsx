@@ -45,7 +45,7 @@ const cardCls =
   "rounded-[20px] border border-line bg-panel transition-colors duration-200";
 
 const chipBase =
-  "min-h-10 rounded-full border px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.08em] transition-colors duration-200 press";
+  "min-h-10 whitespace-nowrap rounded-full border px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.08em] transition-colors duration-200 press";
 
 function chip(active: boolean): string {
   return active
@@ -353,8 +353,8 @@ function FindRoomPanel({
         {(
           [
             ["all", "All rooms"],
-            ["occupied", "Currently occupied"],
-            ["available", "Currently available"],
+            ["occupied", "Occupied"],
+            ["available", "Available"],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -1201,16 +1201,7 @@ function ScheduleInfo({
 }) {
   const savedAt = offline ? cacheSavedAt() : null;
   return (
-    <div className="mt-10 space-y-3">
-      {meta.sample && (
-        <p className="rounded-xl border border-warn/30 bg-warn/10 px-4 py-3 text-xs font-semibold leading-relaxed text-warn">
-          Sample data is currently loaded. The council must replace{" "}
-          <code className="rounded bg-night/60 px-1 py-0.5">
-            /data/cssp-schedule.json
-          </code>{" "}
-          with the official published schedule.
-        </p>
-      )}
+    <div className="mt-12 border-t border-line pt-6">
       {meta.stale && (
         <p className="rounded-xl border border-warn/30 bg-warn/10 px-4 py-3 text-xs font-semibold leading-relaxed text-warn">
           Schedule may have changed. Please verify with the appropriate
@@ -1218,7 +1209,7 @@ function ScheduleInfo({
         </p>
       )}
       {offline && (
-        <p className="flex items-center gap-2 rounded-xl border border-line-2 bg-panel px-4 py-3 text-xs font-semibold text-mist">
+        <p className="mt-3 flex items-center gap-2 rounded-xl border border-line-2 bg-panel px-4 py-3 text-xs font-semibold text-mist">
           <IconWifiOff size={15} className="shrink-0 text-dim" />
           <span>
             Using the most recently loaded schedule
@@ -1230,47 +1221,48 @@ function ScheduleInfo({
         </p>
       )}
 
-      <dl className="rounded-xl border border-line bg-panel/60 px-4 py-3 text-xs leading-relaxed text-dim">
-        <div className="flex flex-wrap gap-x-6 gap-y-1">
-          {meta.updated && (
-            <div>
-              <dt className="inline font-bold uppercase tracking-[0.14em] text-dim">
-                Schedule updated:{" "}
-              </dt>
-              <dd className="inline text-mist">{meta.updated}</dd>
-            </div>
-          )}
-          {meta.term && (
-            <div>
-              <dt className="inline font-bold uppercase tracking-[0.14em] text-dim">
-                Term:{" "}
-              </dt>
-              <dd className="inline text-mist">{meta.term}</dd>
-            </div>
-          )}
-          <div>
-            <dt className="inline font-bold uppercase tracking-[0.14em] text-dim">
-              Entries:{" "}
+      {/* Schedule version + source — tidy label/value rows */}
+      <dl className="mt-4 grid gap-x-8 gap-y-2 rounded-2xl border border-line bg-panel/60 px-4 py-4 text-xs sm:grid-cols-[minmax(9rem,auto)_1fr] sm:px-5">
+        {meta.updated && (
+          <div className="contents">
+            <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-dim sm:self-center">
+              Schedule updated
             </dt>
-            <dd className="tnum inline text-mist">{count}</dd>
+            <dd className="text-mist">{meta.updated}</dd>
           </div>
+        )}
+        {meta.term && (
+          <div className="contents">
+            <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-dim sm:self-center">
+              Term
+            </dt>
+            <dd className="text-mist">{meta.term}</dd>
+          </div>
+        )}
+        <div className="contents">
+          <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-dim sm:self-center">
+            Coverage
+          </dt>
+          <dd className="tnum text-mist">
+            {count} {count === 1 ? "entry" : "entries"} ·{" "}
+            {days.map((d) => DAY_SHORT[d] ?? d).join(" · ") || "—"}
+          </dd>
         </div>
         {meta.source && (
-          <div className="mt-1">
-            <dt className="inline font-bold uppercase tracking-[0.14em] text-dim">
-              Source:{" "}
+          <div className="contents">
+            <dt className="text-[10px] font-bold uppercase tracking-[0.14em] text-dim sm:self-center">
+              Source
             </dt>
-            <dd className="inline text-mist">{meta.source}</dd>
+            <dd className="text-mist">{meta.source}</dd>
           </div>
         )}
       </dl>
 
-      <p className="text-[11px] leading-relaxed text-dim">
+      <p className="mt-4 text-[11px] leading-relaxed text-dim">
         Room availability is based on the published class schedule and does not
         guarantee physical access or availability. A room may still be
-        reserved, locked or in use for an unscheduled activity. Days published
-        in this schedule: {days.map((d) => DAY_SHORT[d] ?? d).join(" · ") || "—"}.
-        All checks run in your browser — no searches are sent to a server.
+        reserved, locked or in use for an unscheduled activity. All checks run
+        in your browser — no searches are sent to a server.
       </p>
     </div>
   );
@@ -1349,14 +1341,6 @@ export default function RoomFinder() {
   function openRoom(room: string) {
     setSelectedRoom(room);
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function openClassTab() {
-    setSelectedRoom(null);
-    setQuery("");
-    setTab("class");
-    // Focus the "Where is my class?" input after the switch renders.
-    requestAnimationFrame(() => classInputRef.current?.focus());
   }
 
   /* ----------------------------- states ---------------------------- */
@@ -1450,7 +1434,7 @@ export default function RoomFinder() {
                     );
                   }
                 }}
-                className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-xs font-bold uppercase tracking-[0.06em] transition-colors duration-200 press ${
+                className={`inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2 text-xs font-bold uppercase tracking-[0.06em] transition-colors duration-200 press ${
                   active
                     ? "border border-vio-500 bg-vio-950 text-vio-200"
                     : "border border-transparent text-mist hover:text-snow"
@@ -1519,18 +1503,6 @@ export default function RoomFinder() {
           <ScheduleTable entries={entries} days={days} onOpenRoom={openRoom} />
         )}
       </div>
-
-      {/* Where is my class? — quick jump (§9) */}
-      {!searching && !selectedRoom && tab !== "class" && (
-        <button
-          type="button"
-          onClick={openClassTab}
-          className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-line bg-panel px-5 py-3 text-sm font-semibold text-vio-300 transition-all duration-200 hover:border-vio-600/60 hover:text-vio-200 active:border-vio-500 active:bg-vio-950 press"
-        >
-          <IconPin size={16} />
-          Where is my class?
-        </button>
-      )}
 
       <ScheduleInfo
         meta={schedule.data.meta}

@@ -12,6 +12,7 @@ import {
 } from "@/lib/roomfinder";
 import { useSchedule } from "./useSchedule";
 import { IconArrowRight, IconClock, IconSearch } from "@/components/Icons";
+import { btnGhost, btnPrimary } from "@/components/Primitives";
 
 /**
  * Homepage strip for the CSSP Room Finder.
@@ -48,7 +49,7 @@ export default function RoomFinderTeaser() {
     <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-vio-300">
-          Room finder
+          Roomivility · Room availability
         </p>
         <h2 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-snow sm:text-3xl">
           Find a classroom. Know where to go.
@@ -83,18 +84,12 @@ export default function RoomFinderTeaser() {
         </form>
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <Link
-            href="/room-finder?view=free"
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-vio-500 px-5 py-3 text-sm font-semibold text-snow shadow-[0_8px_28px_oklch(0.54_0.22_295/0.35)] transition-colors duration-200 hover:bg-vio-400 active:bg-vio-600 press"
-          >
+          <Link href="/room-finder?view=free" className={btnPrimary}>
             <IconClock size={16} />
             What&rsquo;s free right now?
           </Link>
-          <Link
-            href="/room-finder"
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-line bg-panel px-5 py-3 text-sm font-semibold text-snow transition-all duration-200 hover:border-vio-600/60 hover:bg-panel-2 active:border-vio-500 active:bg-vio-950 press"
-          >
-            Open Room Finder
+          <Link href="/room-finder" className={btnGhost}>
+            Open Roomivility
             <IconArrowRight size={15} />
           </Link>
         </div>

@@ -19,8 +19,6 @@ export interface ScheduleMeta {
   source?: string;
   /** Optional term label (e.g. "1st Semester, AY 2026–2027"). */
   term?: string;
-  /** True while the file is placeholder data, not the official schedule. */
-  sample?: boolean;
   /** Administrator flag: schedule may have changed — verify with the office. */
   stale?: boolean;
   /** Optional building/area label, only if the source data defines one. */
@@ -371,7 +369,6 @@ export function sanitizeDataset(raw: unknown): ScheduleDataset | null {
             typeof (meta as ScheduleMeta).term === "string"
               ? (meta as ScheduleMeta).term
               : undefined,
-          sample: (meta as ScheduleMeta).sample === true,
           stale: (meta as ScheduleMeta).stale === true,
           building:
             typeof (meta as ScheduleMeta).building === "string"

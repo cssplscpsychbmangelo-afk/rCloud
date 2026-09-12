@@ -154,10 +154,11 @@ details and the timestamps change.
   service account required; the reader only uses the public read endpoints and
   keeps the Sheet URL out of public markup).
 
-## CSSP Room Finder
+## Roomivility (CSSP Room Finder)
 
-A student-facing **schedule viewer** at `/room-finder` (also linked in the
-navigation and featured on the homepage). Students can find rooms free at a
+**Roomivility** — "room availability" — is the student-facing **schedule
+viewer** at `/room-finder` (also linked in the navigation and featured on the
+homepage). Students can find rooms free at a
 given day/time, look up where a class meets, browse a room's day timeline and
 view the full schedule as a sortable table. It is deliberately **not** a
 booking or room-management system — no accounts, no tracking, no writes.
@@ -202,15 +203,23 @@ are needed:
 
 - `meta.updated` / `meta.source` are displayed verbatim as **SCHEDULE
   UPDATED** / **SOURCE**. Set `"stale": true` to show the "Schedule may have
-  changed" warning; keep `"sample": true` only while the file holds placeholder
-  data (the shipped file is a marked sample — replace it with the official
-  schedule).
+  changed" warning. Always keep the `source` value pointing at the real
+  origin of the data that is loaded.
 - `course`, `section`, `instructor`, `building` are optional per entry and
   rendered only when present. Never add fields the official source does not
   have — the interface shows exactly what the file contains.
 - The file is fetched with short edge caching (`netlify.toml`:
   `max-age=300, stale-while-revalidate`), so updates propagate within minutes
   without a rebuild-heavy workflow.
+
+## AI design skills (`.claude/skills/`)
+
+The repo ships the [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)
+skill pack (installed via `uipro init --ai claude`): `ui-ux-pro-max`,
+`design`, `design-system`, `ui-styling`, `brand`, `banner-design` and
+`slides`. AI coding agents use them for design intelligence (styles,
+palettes, font pairings, UX guidelines); the site itself does not load any
+of it.
 
 ## Verified
 

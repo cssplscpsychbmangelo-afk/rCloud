@@ -1,8 +1,7 @@
 {
   "meta": {
     "updated": "2026-09-07",
-    "source": "SAMPLE DATA — replace public/data/cssp-schedule.json with the official published schedule",
-    "sample": true,
+    "source": "CSSP Local Student Council — published class schedule",
     "stale": false,
     "term": "1st Semester, AY 2026–2027"
   },
