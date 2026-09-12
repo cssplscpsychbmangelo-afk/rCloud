@@ -11,6 +11,7 @@
     "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@pdf-lib/upng": "^1.0.1",
     "drizzle-orm": "^0.45.2",
     "fflate": "^0.8.3",
     "next": "16.3.4",

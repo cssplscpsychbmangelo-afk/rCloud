@@ -112,6 +112,11 @@ details and the timestamps change.
 - Privacy: only the three consolidated totals ever reach the report — no
   individual responses, names, student numbers, emails, phone numbers or
   per-section rows.
+- Cost: browsing the site costs the same as before — the report endpoint only
+  runs when someone clicks Generate/Download. Each report is one ~2 KB Google
+  Sheets request plus a ~70 KB PDF; the logo is fetched and downscaled once per
+  server process (512 px → 256 px, still ~370 dpi when printed) instead of
+  being embedded full-size, which keeps a report at ~70 KB rather than ~213 KB.
 - The Sheet must be shared as "Anyone with the link — Viewer" (no API key or
   service account required; the reader only uses the public read endpoints and
   keeps the Sheet URL out of public markup).

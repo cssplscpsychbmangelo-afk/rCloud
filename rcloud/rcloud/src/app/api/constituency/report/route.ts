@@ -23,6 +23,7 @@ import {
   constituencySettings,
 } from "@/lib/server/schema";
 import { readConstituencyTab } from "@/lib/server/constituencySheet";
+import { loadReportLogo } from "@/lib/server/reportLogo";
 import {
   buildReportFilename,
   formatReportPeriod,
@@ -32,7 +33,6 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const LOGO_PUBLIC_PATH = "/brand/cssp-lsc-logo.png";
 const MAX_NAME = 120;
 const MAX_SECTION = 60;
 
@@ -42,34 +42,6 @@ function clean(value: unknown, max: number): string {
   return typeof value === "string"
     ? value.replace(/\s+/g, " ").trim().slice(0, max)
     : "";
-}
-
-/**
- * Loads the official CSSP LSC logo.
- *
- * The logo lives in `public/brand/`, which is served over HTTP on every host
- * (including serverless ones, where it is not part of the server bundle), so it
- * is fetched from the app's own origin and cached for the lifetime of the
- * process. The asset is never re-created or substituted.
- */
-let logoCache: Promise<Uint8Array | null> | null = null;
-
-async function loadLogoPng(origin: string): Promise<Uint8Array | null> {
-  logoCache ??= (async () => {
-    try {
-      const response = await fetch(new URL(LOGO_PUBLIC_PATH, origin), {
-        cache: "no-store",
-      });
-      if (!response.ok) return null;
-      return new Uint8Array(await response.arrayBuffer());
-    } catch {
-      return null;
-    }
-  })();
-  const bytes = await logoCache;
-  // Never cache a failure — the next report can try again.
-  if (!bytes) logoCache = null;
-  return bytes;
 }
 
 export async function POST(request: Request) {
@@ -138,7 +110,7 @@ export async function POST(request: Request) {
 
   let logoPng: Uint8Array | null = null;
   try {
-    logoPng = await loadLogoPng(new URL(request.url).origin);
+    logoPng = await loadReportLogo(new URL(request.url).origin);
   } catch {
     logoPng = null;
   }
