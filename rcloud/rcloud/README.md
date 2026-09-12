@@ -143,9 +143,13 @@ details and the timestamps change.
   per-section rows.
 - Cost: browsing the site costs the same as before — the report endpoint only
   runs when someone clicks Generate/Download. Each report is one ~2 KB Google
-  Sheets request plus a ~70 KB PDF; the logo is fetched and downscaled once per
+  Sheets request plus a ~70 KB PDF; the logo is read and downscaled once per
   server process (512 px → 256 px, still ~370 dpi when printed) instead of
   being embedded full-size, which keeps a report at ~70 KB rather than ~213 KB.
+  Logo resolution prefers the on-disk `public/` file, then the app's own
+  origin, and finally falls back to a pre-downscaled copy bundled in the
+  server code — so the report can always be prepared even when a serverless
+  host rewrites `request.url` and blocks the self-fetch.
 - The Sheet must be shared as "Anyone with the link — Viewer" (no API key or
   service account required; the reader only uses the public read endpoints and
   keeps the Sheet URL out of public markup).

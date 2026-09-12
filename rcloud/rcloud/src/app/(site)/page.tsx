@@ -8,8 +8,15 @@ import {
   ResourceCard,
   StatCard,
 } from "@/components/Cards";
-import { IconArrowRight, IconCoins } from "@/components/Icons";
+import { IconArrowRight, IconCoins, IconExternal } from "@/components/Icons";
+import AnnouncementsBoard from "@/components/AnnouncementsBoard";
 import { site } from "@/lib/data/site";
+import {
+  organizations,
+  publications,
+  socioCulturalGroups,
+  type OrgEntry,
+} from "@/lib/data/orgs";
 import { formatNumber, formatPeso } from "@/lib/format";
 import {
   getAnnouncements,
@@ -283,36 +290,66 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* --------------------- Organizations & socio-cultural ---------------- */}
+      <section className="border-t border-line">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <Reveal>
+            <SectionHeading
+              eyebrow="Directory"
+              title="Organizations & socio-cultural groups"
+              description="The accredited organizations and groups of the College of Social Sciences and Philosophy."
+            />
+          </Reveal>
+          <div className="mt-8 grid gap-6 lg:grid-cols-3">
+            {(
+              [
+                ["Organizations", organizations],
+                ["Socio-cultural groups", socioCulturalGroups],
+                ["Publication", publications],
+              ] as Array<[string, OrgEntry[]]>
+            ).map(([groupLabel, entries]) => (
+              <div key={groupLabel}>
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.16em] text-dim">
+                  {groupLabel}
+                </h3>
+                <ul className="mt-3 space-y-2">
+                  {entries.map((org) => (
+                    <li key={org.name}>
+                      <a
+                        href={org.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group flex min-h-12 items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 py-3 text-sm transition-colors duration-200 hover:border-vio-600/60 hover:bg-panel-2 active:border-vio-500 active:bg-vio-950 press"
+                      >
+                        <span className="min-w-0">
+                          <span className="block font-display font-bold text-snow">
+                            {org.name}
+                          </span>
+                          <span className="block truncate text-xs text-mist">
+                            {org.tag}
+                          </span>
+                        </span>
+                        <IconExternal
+                          size={14}
+                          className="shrink-0 text-vio-300 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                        />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ---------------------------- Announcements ------------------------- */}
       <section className="border-t border-line bg-abyss/60">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <Reveal>
             <SectionHeading eyebrow="Announcements" title="Latest from the council" />
           </Reveal>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {announcements.slice(0, 3).map((item, index) => (
-              <Reveal key={item.id} delay={index * 80}>
-                <article className="flex h-full flex-col gap-3 rounded-[20px] border border-line bg-panel p-5 transition-colors duration-200 hover:border-line-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="rounded-full border border-vio-500/40 bg-vio-950 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-vio-300">
-                      {item.category}
-                    </span>
-                    <time dateTime={item.date} className="tnum text-xs text-dim">
-                      {new Date(item.date).toLocaleDateString("en-PH", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </time>
-                  </div>
-                  <h3 className="font-display text-base font-bold text-snow">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm leading-relaxed text-mist">{item.content}</p>
-                </article>
-              </Reveal>
-            ))}
-          </div>
+          <AnnouncementsBoard announcements={announcements} />
         </div>
       </section>
 

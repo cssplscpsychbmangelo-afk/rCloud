@@ -72,6 +72,8 @@ export const projects = pgTable("projects", {
   documentLinks: text("document_links").notNull().default(""), // one external URL per line
   transparencyNotes: text("transparency_notes").notNull().default(""),
   published: boolean("published").notNull().default(true),
+  /** Head-admin review state for Board-Member project requests: pending | approved | rejected. */
+  approvalStatus: text("approval_status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -17,6 +17,9 @@ export const btnGhostAdmin =
 export const btnDanger =
   "inline-flex min-h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-bad/30 bg-bad/10 px-3 text-xs font-semibold text-bad transition-colors duration-200 hover:bg-bad/20 press";
 
+export const btnOk =
+  "inline-flex min-h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-ok/30 bg-ok/10 px-3 text-xs font-semibold text-ok transition-colors duration-200 hover:bg-ok/20 press";
+
 export function PageHeader({
   title,
   description,
@@ -110,7 +113,7 @@ export function RowAction({
   label: string;
   extra?: Record<string, string>;
   disabled?: boolean;
-  tone?: "ghost" | "danger";
+  tone?: "ghost" | "danger" | "ok";
 }) {
   return (
     <form action={action} className="inline-flex align-middle">
@@ -121,7 +124,9 @@ export function RowAction({
       <button
         type="submit"
         disabled={disabled}
-        className={`${tone === "danger" ? btnDanger : btnGhostAdmin} disabled:opacity-40`}
+        className={`${
+          tone === "danger" ? btnDanger : tone === "ok" ? btnOk : btnGhostAdmin
+        } disabled:opacity-40`}
       >
         {label}
       </button>

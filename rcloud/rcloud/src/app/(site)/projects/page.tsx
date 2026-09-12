@@ -28,9 +28,9 @@ export default async function ProjectsPage() {
           Projects
         </h1>
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-mist sm:text-base">
-          Every council project, tracked from approval to liquidation. Tap a
-          status to filter — each card shows its approved budget, amount
-          utilized and what remains.
+          Every council project, tracked from approval to liquidation. Projects
+          this month are shown in full, while past months are listed minimally —
+          pick a month to review what came before.
         </p>
       </Reveal>
 
