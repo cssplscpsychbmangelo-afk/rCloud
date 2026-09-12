@@ -133,13 +133,13 @@ export default async function HomePage() {
       </section>
 
       {/* ---------------------------- Announcements ------------------------- */}
-      <section className="border-b border-warn/20 bg-abyss/60">
+      <section className="border-b border-vio-700/30 bg-abyss/60">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <Reveal>
             <SectionHeading
               eyebrow="Announcements"
               title="Latest from the council"
-              description="Important updates are posted here first, right where they are easy to find."
+              description="The three most recent advisories and updates, posted here first, right where they are easy to find."
             />
           </Reveal>
           <AnnouncementsBoard announcements={announcements} />
@@ -310,7 +310,7 @@ export default async function HomePage() {
           <Reveal>
             <SectionHeading
               eyebrow="Directory"
-              title="Organizations & socio-cultural groups"
+              title="CSSP Groups Directory"
               description="The accredited organizations and groups of the College of Social Sciences and Philosophy."
             />
           </Reveal>

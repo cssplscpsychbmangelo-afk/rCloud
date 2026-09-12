@@ -17,12 +17,12 @@ export function percentOf(part: number, whole: number): number {
   return Math.min(100, Math.round((part / whole) * 100));
 }
 
-/** Stable "YYYY-MM" key used to group projects & announcements by month. */
+/** Stable "YYYY-MM" key used to group projects by month. */
 export function monthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-/** "YYYY-MM" → "September 2026". */
+/** "YYYY-MM" → "September 2026". Used by the projects board month selector. */
 export function monthLabel(key: string): string {
   const [year, month] = key.split("-").map(Number);
   const date = new Date(year, (month || 1) - 1, 1);
