@@ -256,6 +256,34 @@ export function IconSparkle(props: IconProps) {
   );
 }
 
+export function IconDoor(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M5 20.5h14" />
+      <path d="M7 20.5V4.8A1.3 1.3 0 0 1 8.1 3.5l8-1.4A1.3 1.3 0 0 1 17.6 3.4v17.1" />
+      <circle cx="14.2" cy="11.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconPin(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 21.5s7-6.2 7-11.5a7 7 0 1 0-14 0c0 5.3 7 11.5 7 11.5Z" />
+      <circle cx="12" cy="9.8" r="2.4" />
+    </svg>
+  );
+}
+
+export function IconList(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <path d="M3.5 9.5h17M9.5 9.5v10M15 9.5v10" />
+    </svg>
+  );
+}
+
 const registry: Record<string, (props: IconProps) => React.JSX.Element> = {
   cloud: IconCloud,
   heart: IconHeart,
@@ -272,6 +300,9 @@ const registry: Record<string, (props: IconProps) => React.JSX.Element> = {
   waves: IconWaves,
   chart: IconChart,
   sparkle: IconSparkle,
+  door: IconDoor,
+  pin: IconPin,
+  list: IconList,
 };
 
 export function ResourceIcon({
