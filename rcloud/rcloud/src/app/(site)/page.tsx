@@ -264,7 +264,7 @@ export default async function HomePage() {
         <Reveal>
           <SectionHeading
             eyebrow="The cabinet"
-            title="Your council, SY 2025–2026"
+            title={`Your council, AY ${site.term}`}
             description="The elected officers serving the CSSP student body."
             action={
               <Link href="/officers" className={btnGhostSm}>

@@ -1,22 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/server/auth";
-import { roleHasPermission, roleLabels, type Role } from "@/lib/server/permissions";
+import { roleLabels, type Role } from "@/lib/server/permissions";
+import { visibleAdminNav } from "@/lib/adminNav";
 import { logoutAction } from "@/lib/server/actions";
-import type { Permission } from "@/lib/server/permissions";
 
 export const dynamic = "force-dynamic";
 
-const navItems: Array<{ href: string; label: string; perm: Permission | null }> = [
-  { href: "/admin", label: "Dashboard", perm: null },
-  { href: "/admin/resources", label: "Resources", perm: "content" },
-  { href: "/admin/officers", label: "Officers", perm: "content" },
-  { href: "/admin/projects", label: "Projects", perm: "content" },
-  { href: "/admin/announcements", label: "Announcements", perm: "content" },
-  { href: "/admin/budget", label: "Budget", perm: "finance" },
-  { href: "/admin/constituency", label: "Constituency", perm: "constituency" },
-];
-
+/**
+ * Admin shell — no public-site navigation or footer here. The only links in
+ * this chrome are admin pages (see src/lib/adminNav.ts), filtered by role, so
+ * neither account ever sees a link it cannot open.
+ */
 export default async function AdminLayout({
   children,
 }: {
@@ -25,23 +20,25 @@ export default async function AdminLayout({
   const session = await getSession();
   if (!session) redirect("/admin/login");
 
-  const visible = navItems.filter(
-    (item) => !item.perm || roleHasPermission(session.role, item.perm),
-  );
+  const visible = visibleAdminNav(session.role);
 
   return (
     <div className="min-h-screen bg-night text-snow">
       {/* Top bar */}
       <header className="sticky top-0 z-40 border-b border-line bg-night/70 backdrop-blur-xl backdrop-saturate-150">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="font-display text-lg font-black tracking-tight">
+          <Link
+            href="/admin"
+            className="flex items-center gap-2.5 rounded-lg press"
+            aria-label="rCloud admin — dashboard"
+          >
+            <span className="font-display text-lg font-black tracking-tight">
               r<span className="text-vio-300">C</span>loud
-            </Link>
+            </span>
             <span className="rounded-full border border-vio-500/40 bg-vio-950 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-vio-300">
               Admin
             </span>
-          </div>
+          </Link>
           <div className="flex items-center gap-3">
             <span className="hidden text-xs text-mist sm:block">
               {session.name}

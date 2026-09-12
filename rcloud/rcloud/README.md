@@ -1,12 +1,13 @@
 # rCloud — CSSP Local Student Council
 
 The digital resource & transparency portal of the **CSSP Local Student
-Council, Bulacan State University** (SY 2025–2026).
+Council, Bulacan State University** (AY 2026–2027).
 
 - **Public site** — resources, transparency, projects, constituency, officers,
   announcements. Fully data-driven: everything renders from the database.
 - **Admin** (`/admin`, not linked publicly) — role-based management of all
-  public content.
+  public content. The admin panel has its own navigation and never renders the
+  public nav or footer.
 
 ## Stack
 
@@ -29,12 +30,40 @@ npm run dev                   # or: npm run build && npm run start
 
 | Account | Email | Password | Access |
 | --- | --- | --- | --- |
-| Head Admin (Gov & VG) | `headadmin@rcloud.cssp` | `rcloud2026` | Content + Finance + Constituency (full) |
+| Head Admin (Gov & VG) | `headadmin@rcloud.cssp` | `rcloud2026` | Content + Finance + Constituency + Account (full) |
 | Moderator (Board Members) | `moderator@rcloud.cssp` | `rcloud2026` | Content only |
 
-Change passwords before going live. Roles/permissions live in
-`src/lib/server/permissions.ts`; enforcement happens in every server action
-(`requirePermission`) and page guard — not just hidden buttons.
+Change passwords before going live (**Admin → Account**, main admin only, or
+re-run the seed). Roles/permissions live in `src/lib/server/permissions.ts`;
+enforcement happens in every server action (`requirePermission`) and page guard
+— not just hidden buttons.
+
+### Admin navigation
+
+- `src/lib/adminNav.ts` is the single source for both the admin sidebar and the
+  dashboard's "Admin sections" grid, filtered by the signed-in role, so each
+  account only ever sees admin pages it can actually open.
+- Head Admin: Dashboard, Resources, Officers, Projects, Announcements, Budget,
+  Constituency, Account. Moderator: Dashboard, Resources, Officers, Projects,
+  Announcements.
+- The admin area lives outside the `(site)` route group, so no public-site link
+  (Home/Resources/Transparency/…, footer) appears inside `/admin`.
+- **Account** (`/admin/account`, `account` permission) lets the Head Admin change
+  the admin sign-in email and password. It requires the current password and
+  never displays the current email or password.
+- **Budget** (`/admin/budget`, `finance` permission) configures the total LSC
+  budget *and* every project's approved budget / expenditure inline; allocated,
+  utilized and remaining stay computed from published projects.
+- The sign-in page never prints account names, emails or passwords — it is
+  publicly reachable.
+
+## Terminology / academic year
+
+- `site.term` (`src/lib/data/site.ts`) is the sitting council's academic year:
+  **2026–2027**. It drives the Officers page, the home "Your council, AY …"
+  heading and the Transparency budget period.
+- `site.footerMark` stays **BulSU CSSP LSC 2025-2026™** — the term the portal
+  was originally built under.
 
 ## Architecture
 

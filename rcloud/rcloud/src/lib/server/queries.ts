@@ -110,7 +110,7 @@ export async function getBudgetSummary(): Promise<BudgetSummary> {
     allocated,
     utilized,
     remaining: allocated - utilized,
-    period: `SY ${site.term}`,
+    period: `AY ${site.term}`,
   };
 }
 

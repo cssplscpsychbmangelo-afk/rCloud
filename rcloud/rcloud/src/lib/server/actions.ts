@@ -18,6 +18,8 @@ import {
   createSession,
   destroySession,
   requirePermission,
+  requireSession,
+  hashPassword,
   verifyPassword,
 } from "./auth";
 import { parseSheetId, readConstituencySheet } from "./constituencySheet";
@@ -229,7 +231,10 @@ export async function saveProjectDetails(form: FormData): Promise<void> {
   back(id ? `/admin/projects?edit=${id}` : "/admin/projects");
 }
 
-/** Finance-only: approved budget + actual expenditure per project. */
+/**
+ * Finance-only: approved budget + actual expenditure per project.
+ * Editable from Projects and from the Budget section (returnTo=budget).
+ */
 export async function saveProjectFinance(form: FormData): Promise<void> {
   await requirePermission("finance");
   const id = str(form, "id");
@@ -241,7 +246,11 @@ export async function saveProjectFinance(form: FormData): Promise<void> {
       updatedAt: new Date(),
     })
     .where(eq(projects.id, id));
-  back(`/admin/projects?edit=${id}`);
+  back(
+    str(form, "returnTo") === "budget"
+      ? "/admin/budget?saved=1"
+      : `/admin/projects?edit=${id}`,
+  );
 }
 
 export async function deleteProject(form: FormData): Promise<void> {
@@ -321,6 +330,55 @@ export async function saveBudget(form: FormData): Promise<void> {
     await db.insert(budget).values({ totalBudget: total });
   }
   back("/admin/budget");
+}
+
+/* ------------------------- account (main admin only) ---------------------- */
+
+/**
+ * Changes the signed-in admin's sign-in email and/or password.
+ *
+ * Guarded by the "account" permission (Head Admin only) and by a check of the
+ * current password, so nobody can take over an account with a stale session.
+ * The current email and password are never displayed or returned.
+ */
+export async function updateAdminCredentials(form: FormData): Promise<void> {
+  await requirePermission("account");
+  const session = await requireSession();
+  const [user] = await db.select().from(users).where(eq(users.id, session.id));
+  if (!user) redirect("/admin/account?error=missing");
+
+  const current = String(form.get("currentPassword") ?? "");
+  if (!(await verifyPassword(current, user.passwordHash))) {
+    redirect("/admin/account?error=password");
+  }
+
+  const newEmail = str(form, "newEmail").toLowerCase();
+  const newPassword = String(form.get("newPassword") ?? "");
+  const confirmPassword = String(form.get("confirmPassword") ?? "");
+
+  if (!newEmail && !newPassword) redirect("/admin/account?error=empty");
+
+  const values: { email?: string; passwordHash?: string } = {};
+
+  if (newEmail && newEmail !== user.email) {
+    const [clash] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, newEmail));
+    if (clash) redirect("/admin/account?error=email");
+    values.email = newEmail;
+  }
+
+  if (newPassword) {
+    if (newPassword.length < 8) redirect("/admin/account?error=short");
+    if (newPassword !== confirmPassword) redirect("/admin/account?error=mismatch");
+    values.passwordHash = await hashPassword(newPassword);
+  }
+
+  if (Object.keys(values).length > 0) {
+    await db.update(users).set(values).where(eq(users.id, user.id));
+  }
+  back("/admin/account?saved=1");
 }
 
 /* --------------------- constituency (Google Sheets sync) ------------------- */
