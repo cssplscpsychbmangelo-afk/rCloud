@@ -4,22 +4,27 @@
  * The report uses the official CSSP LSC logo that already ships with rCloud
  * (`public/brand/cssp-lsc-logo.png`) — it is never re-drawn or replaced.
  *
- * Two things happen here, both in-memory only:
+ * The logo is downscaled to the size the report actually needs. The source is
+ * 512x512 but is drawn at 50 pt (~0.7 in), i.e. ~740 dpi — far more than a
+ * PDF needs. At 256 px it still prints at ~370 dpi (above the 300 dpi print
+ * standard) while cutting a report from ~213 KB to ~62 KB, which matters on
+ * mobile data.
  *
- * 1. The asset is fetched from the app's own origin, because `public/` is
- *    served over HTTP on every host (on serverless platforms it is not part of
- *    the server bundle, so it cannot simply be read from disk).
- * 2. It is downscaled to the size the report actually needs. The source is
- *    512x512 but is drawn at 50 pt (~0.7 in), i.e. ~740 dpi — far more than a
- *    PDF needs. At 256 px it still prints at ~370 dpi (above the 300 dpi print
- *    standard) while cutting a report from ~213 KB to ~62 KB, which matters on
- *    mobile data.
+ * The bytes are resolved in this order (see `loadReportLogo`): the `public/`
+ * file on disk, then the app's own origin over HTTP, then an embedded,
+ * pre-downscaled copy bundled into the server code. The embedded copy
+ * guarantees the report can always be prepared even when the function cannot
+ * reach its own origin (e.g. Netlify rewrites `request.url` to an internal
+ * host, so a self-fetch fails).
  *
- * The result is cached for the lifetime of the process, so the fetch and the
+ * The result is cached for the lifetime of the process, so resolution and
  * resize happen once per cold start — not once per report.
  */
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import UPNGLoader from "@pdf-lib/upng";
+import { REPORT_LOGO_BASE64 } from "./reportLogoBase64";
 
 /**
  * Minimal typing for the decoder/encoder: upng accepts typed arrays at runtime
@@ -42,23 +47,68 @@ const UPNG = ((UPNGLoader as unknown as { default?: Upng }).default ??
 /** Drawn size of the logo in the report: 50 pt ≈ 0.69 in → ~370 dpi. */
 const LOGO_TARGET_PX = 256;
 
+/** Relative path of the source logo inside `public/`. */
+const LOGO_PUBLIC_PATH = "public/brand/cssp-lsc-logo.png";
+
 let cache: Promise<Uint8Array | null> | null = null;
 
+/**
+ * Returns the report logo as PNG bytes, downscaled to the size the report
+ * draws. Resolution order:
+ *
+ *  1. Read the `public/` file from disk — the single source of truth, and the
+ *     fastest path in dev / `next start`.
+ *  2. Fetch it from the app's own origin — kept for hosts where `public/` is
+ *     served over HTTP rather than present on the function's filesystem.
+ *  3. An embedded, pre-downscaled copy shipped in the server bundle. This
+ *     guarantees the report can always be prepared, even when the function
+ *     cannot reach its own origin (e.g. Netlify rewrites `request.url` to an
+ *     internal host, which makes the self-fetch fail).
+ */
 export function loadReportLogo(origin: string): Promise<Uint8Array | null> {
-  cache ??= (async () => {
-    try {
-      const response = await fetch(
-        new URL("/brand/cssp-lsc-logo.png", origin),
-        { cache: "no-store" },
-      );
-      if (!response.ok) return null;
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      return downscalePng(bytes, LOGO_TARGET_PX) ?? bytes;
-    } catch {
-      return null;
-    }
-  })();
+  cache ??= resolveLogo(origin);
   return cache;
+}
+
+async function resolveLogo(origin: string): Promise<Uint8Array | null> {
+  const fromDisk = readLogoFromDisk();
+  if (fromDisk) return downscalePng(fromDisk, LOGO_TARGET_PX) ?? fromDisk;
+
+  const fetched = await fetchLogoFromOrigin(origin);
+  if (fetched) return downscalePng(fetched, LOGO_TARGET_PX) ?? fetched;
+
+  return decodeEmbeddedLogo();
+}
+
+function readLogoFromDisk(): Uint8Array | null {
+  try {
+    const bytes = readFileSync(join(process.cwd(), LOGO_PUBLIC_PATH));
+    return bytes.length > 0 ? new Uint8Array(bytes) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchLogoFromOrigin(origin: string): Promise<Uint8Array | null> {
+  try {
+    const response = await fetch(
+      new URL("/brand/cssp-lsc-logo.png", origin),
+      { cache: "no-store" },
+    );
+    if (!response.ok) return null;
+    return new Uint8Array(await response.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+function decodeEmbeddedLogo(): Uint8Array | null {
+  try {
+    const bytes = new Uint8Array(Buffer.from(REPORT_LOGO_BASE64, "base64"));
+    return bytes.length > 0 ? bytes : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
