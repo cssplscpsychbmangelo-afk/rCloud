@@ -117,12 +117,14 @@ export async function getBudgetSummary(): Promise<BudgetSummary> {
   };
 }
 
+/** Latest active announcements for the home feed — capped at three. */
 export async function getAnnouncements(): Promise<Announcement[]> {
   const rows = await db
     .select()
     .from(announcements)
     .where(eq(announcements.active, true))
-    .orderBy(desc(announcements.publishedAt));
+    .orderBy(desc(announcements.publishedAt))
+    .limit(3);
   return rows.map((a) => ({
     id: a.id,
     title: a.title,
