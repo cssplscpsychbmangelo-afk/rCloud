@@ -209,6 +209,7 @@ export async function saveProjectDetails(form: FormData): Promise<void> {
     redirect(`/admin/projects?error=${encodeURIComponent((error as Error).message)}`);
   }
   const dateRaw = str(form, "date");
+  const isHeadAdmin = session.role === "head_admin";
   const values = {
     name: str(form, "name"),
     description: str(form, "description"),
@@ -219,15 +220,22 @@ export async function saveProjectDetails(form: FormData): Promise<void> {
     imageUrl,
     documentLinks: str(form, "documentLinks"),
     transparencyNotes: str(form, "transparencyNotes"),
-    published: session.role === "head_admin" && bool(form, "published"),
     updatedAt: new Date(),
   };
   if (!values.name) redirect("/admin/projects?error=missing");
 
   if (id) {
+    // Editing keeps the project's current review state — publishing is a
+    // separate, one-click action (Approve / Reject), not part of editing.
     await db.update(projects).set(values).where(eq(projects.id, id));
   } else {
-    await db.insert(projects).values(values);
+    // New projects: Head Admin publishes immediately; Board Members submit a
+    // request that waits for Head-Admin approval.
+    await db.insert(projects).values({
+      ...values,
+      published: isHeadAdmin,
+      approvalStatus: isHeadAdmin ? "approved" : "pending",
+    });
   }
   back(id ? `/admin/projects?edit=${id}` : "/admin/projects");
 }
@@ -260,16 +268,24 @@ export async function deleteProject(form: FormData): Promise<void> {
   back("/admin/projects");
 }
 
-export async function toggleProject(form: FormData): Promise<void> {
+/**
+ * Head-admin decision on a Board Member's project request.
+ * decision: "approve" → publish; "reject" → declined; "unpublish" → back to review.
+ */
+export async function setProjectApproval(form: FormData): Promise<void> {
   await requirePermission("feature");
   const id = str(form, "id");
-  const [row] = await db.select().from(projects).where(eq(projects.id, id));
-  if (row) {
-    await db
-      .update(projects)
-      .set({ published: !row.published, updatedAt: new Date() })
-      .where(eq(projects.id, id));
-  }
+  const decision = str(form, "decision");
+  const patch =
+    decision === "reject"
+      ? { published: false, approvalStatus: "rejected" as const }
+      : decision === "unpublish"
+        ? { published: false, approvalStatus: "pending" as const }
+        : { published: true, approvalStatus: "approved" as const };
+  await db
+    .update(projects)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(projects.id, id));
   back("/admin/projects");
 }
 

@@ -85,6 +85,7 @@ async function main() {
       approvedBudget: p.budget,
       actualExpenditure: p.utilized,
       published: true,
+      approvalStatus: "approved",
     });
   }
 

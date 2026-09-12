@@ -8,7 +8,7 @@ import {
   deleteProject,
   saveProjectDetails,
   saveProjectFinance,
-  toggleProject,
+  setProjectApproval,
 } from "@/lib/server/actions";
 import {
   btnAdmin,
@@ -39,6 +39,7 @@ export default async function AdminProjectsPage({
   await requirePermission("content");
   const params = await searchParams;
   const session = await getSession();
+  const isHeadAdmin = session?.role === "head_admin";
   const canFinance = session ? roleHasPermission(session.role, "finance") : false;
   const canFeature = session ? roleHasPermission(session.role, "feature") : false;
   const rows = await db.select().from(projects).orderBy(desc(projects.createdAt));
@@ -48,9 +49,14 @@ export default async function AdminProjectsPage({
     <div className="space-y-6">
       <PageHeader
         title="Projects"
-        description="Create and edit projects. Finance figures are restricted to Head Admins. Remaining is computed automatically."
+        description="Board Members submit projects for approval; Head Admins Approve or Reject in one click. Finance figures are restricted to Head Admins. Remaining is computed automatically."
       />
       {params?.error && <Warn>Missing required fields or an invalid upload.</Warn>}
+      <Warn>
+        Approve requests only for projects that were coordinated with the
+        council beforehand. Unplanned or uncoordinated submissions should be
+        rejected.
+      </Warn>
 
       <Card>
         <h2 className="font-display text-base font-bold text-snow">
@@ -97,16 +103,17 @@ export default async function AdminProjectsPage({
           <Field label="Transparency notes" className="sm:col-span-2">
             <textarea name="transparencyNotes" rows={2} defaultValue={editing?.transparencyNotes ?? ""} className={textareaCls} />
           </Field>
-          <label className="flex items-center gap-2 text-sm text-mist">
-            <input type="checkbox" name="published" defaultChecked={editing ? editing.published : true} className="h-4 w-4 accent-vio-500" />
-            Published on public site
-          </label>
           <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
             <button type="submit" className={btnAdmin}>
-              {editing ? "Save details" : "Create project"}
+              {editing ? "Save details" : isHeadAdmin ? "Create project" : "Submit project for approval"}
             </button>
             {editing && <a href="/admin/projects" className={btnGhostAdmin}>Close</a>}
           </div>
+          <p className="text-xs leading-relaxed text-dim sm:col-span-2">
+            New submissions from Board Members are marked{" "}
+            <span className="font-semibold text-warn">pending review</span> until a
+            Head Admin approves them — no need to edit before publishing.
+          </p>
         </form>
       </Card>
 
@@ -177,14 +184,34 @@ export default async function AdminProjectsPage({
                     {over && " ⚠"}
                   </Td>
                   <Td>
-                    <span className={`text-[10px] font-bold uppercase tracking-[0.12em] ${row.published ? "text-ok" : "text-bad"}`}>
-                      {row.published ? "published" : "draft"}
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-[0.12em] ${
+                        row.published
+                          ? "text-ok"
+                          : row.approvalStatus === "rejected"
+                            ? "text-bad"
+                            : "text-warn"
+                      }`}
+                    >
+                      {row.published
+                        ? "approved"
+                        : row.approvalStatus === "rejected"
+                          ? "rejected"
+                          : "pending review"}
                     </span>
                   </Td>
                   <Td>
                     <div className="flex flex-wrap items-center gap-2">
                       <a href={`/admin/projects?edit=${row.id}`} className={btnGhostAdmin}>Edit</a>
-                      {canFeature && <RowAction action={toggleProject} id={row.id} label={row.published ? "Unpublish" : "Publish"} />}
+                      {canFeature && !row.published && (
+                        <>
+                          <RowAction action={setProjectApproval} id={row.id} label="Approve" extra={{ decision: "approve" }} tone="ok" />
+                          <RowAction action={setProjectApproval} id={row.id} label="Reject" extra={{ decision: "reject" }} tone="danger" />
+                        </>
+                      )}
+                      {canFeature && row.published && (
+                        <RowAction action={setProjectApproval} id={row.id} label="Unpublish" extra={{ decision: "unpublish" }} />
+                      )}
                       <RowAction action={deleteProject} id={row.id} label="Delete" tone="danger" />
                     </div>
                   </Td>
