@@ -228,6 +228,16 @@ export function IconChart(props: IconProps) {
   );
 }
 
+export function IconDownload(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 4v10" />
+      <path d="m7.5 10.5 4.5 4 4.5-4" />
+      <path d="M5 19h14" />
+    </svg>
+  );
+}
+
 export function IconSparkle(props: IconProps) {
   return (
     <svg {...base(props)}>

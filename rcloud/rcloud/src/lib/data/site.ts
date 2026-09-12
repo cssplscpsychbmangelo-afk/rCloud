@@ -6,8 +6,10 @@ export const site = {
   fullName: "Rajah Cloud",
   org: "CSSP Local Student Council",
   parent: "Bulacan State University",
-  term: "2025–2026",
+  /** Current academic year of the sitting council. */
+  term: "2026–2027",
   tagline: "Digital Resource & Transparency Portal",
+  /** Kept at 2025-2026: the council this portal was built under. */
   footerMark: "BulSU CSSP LSC 2025-2026™",
   logo: "/brand/cssp-lsc-logo.png",
   intro: [

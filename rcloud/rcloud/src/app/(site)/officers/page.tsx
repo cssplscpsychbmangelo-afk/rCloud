@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Reveal from "@/components/Reveal";
 import BackHome from "@/components/BackHome";
 import { OfficerCard } from "@/components/Cards";
+import { site } from "@/lib/data/site";
 import { getOfficers } from "@/lib/server/queries";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Officers",
   description:
-    "The elected officers of the CSSP Local Student Council, SY 2025–2026.",
+    `The elected officers of the CSSP Local Student Council, AY ${site.term}.`,
 };
 
 export default async function OfficersPage() {
@@ -22,7 +23,7 @@ export default async function OfficersPage() {
       </div>
       <Reveal>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-vio-300">
-          SY 2025–2026
+          AY {site.term}
         </p>
         <h1 className="mt-2 font-display text-4xl font-black tracking-tight text-snow sm:text-5xl">
           LSC Officers

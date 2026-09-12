@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Reddit_Sans } from "next/font/google";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
 import { site } from "@/lib/data/site";
 import "./globals.css";
 
@@ -32,21 +30,20 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Root layout — shell only (html, fonts, global styles).
+ *
+ * The public navigation and footer live in the `(site)` route group so the
+ * /admin area is never wrapped in public-site chrome: admin pages show admin
+ * navigation only.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${inter.variable} ${reddit.variable}`}>
       <body className="min-h-screen bg-night font-sans text-snow antialiased">
-        <a
-          href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-vio-600 focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-snow"
-        >
-          Skip to content
-        </a>
-        <Nav />
-        <main id="main">{children}</main>
-        <Footer />
+        {children}
       </body>
     </html>
   );

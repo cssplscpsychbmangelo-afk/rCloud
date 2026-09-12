@@ -42,7 +42,6 @@ export default async function LoginPage({
               type="email"
               required
               autoComplete="username"
-              placeholder="headadmin@rcloud.cssp"
               className={inputCls}
             />
           </Field>
@@ -61,11 +60,11 @@ export default async function LoginPage({
           </button>
         </form>
 
+        {/* Sign-in hints (account names, emails or passwords) are deliberately
+            not shown here — this page is publicly reachable. */}
         <p className="mt-6 rounded-xl border border-line bg-panel/60 px-4 py-3 text-center text-[11px] leading-relaxed text-dim">
-          Development accounts — Head Admin (Gov &amp; VG):{" "}
-          <code>headadmin@rcloud.cssp</code> · Moderator (Board Members):{" "}
-          <code>moderator@rcloud.cssp</code> · password{" "}
-          <code>rcloud2026</code>. Change before going live.
+          Restricted to authorised council officers. Credentials are issued by
+          the Head Admin and are never displayed here.
         </p>
       </div>
     </main>
