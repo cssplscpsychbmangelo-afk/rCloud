@@ -132,6 +132,20 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ---------------------------- Announcements ------------------------- */}
+      <section className="border-b border-warn/20 bg-abyss/60">
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <Reveal>
+            <SectionHeading
+              eyebrow="Announcements"
+              title="Latest from the council"
+              description="Important updates are posted here first, right where they are easy to find."
+            />
+          </Reveal>
+          <AnnouncementsBoard announcements={announcements} />
+        </div>
+      </section>
+
       {/* --------------------------- Quick access --------------------------- */}
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <Reveal>
@@ -340,16 +354,6 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ---------------------------- Announcements ------------------------- */}
-      <section className="border-t border-line bg-abyss/60">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <Reveal>
-            <SectionHeading eyebrow="Announcements" title="Latest from the council" />
-          </Reveal>
-          <AnnouncementsBoard announcements={announcements} />
         </div>
       </section>
 
