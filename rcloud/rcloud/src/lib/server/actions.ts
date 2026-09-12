@@ -23,6 +23,7 @@ import {
   verifyPassword,
 } from "./auth";
 import { parseSheetId, readConstituencySheet } from "./constituencySheet";
+import { ensureSchema } from "./migrate";
 
 /* --------------------------------- helpers -------------------------------- */
 
@@ -199,6 +200,7 @@ export async function toggleOfficer(form: FormData): Promise<void> {
 
 export async function saveProjectDetails(form: FormData): Promise<void> {
   await requirePermission("content");
+  await ensureSchema();
   const session = await requireSession();
   const id = str(form, "id");
   let imageUrl = str(form, "imageUrl") || null;
@@ -246,6 +248,7 @@ export async function saveProjectDetails(form: FormData): Promise<void> {
  */
 export async function saveProjectFinance(form: FormData): Promise<void> {
   await requirePermission("finance");
+  await ensureSchema();
   const id = str(form, "id");
   await db
     .update(projects)
@@ -264,6 +267,7 @@ export async function saveProjectFinance(form: FormData): Promise<void> {
 
 export async function deleteProject(form: FormData): Promise<void> {
   await requirePermission("content");
+  await ensureSchema();
   await db.delete(projects).where(eq(projects.id, str(form, "id")));
   back("/admin/projects");
 }
@@ -274,6 +278,7 @@ export async function deleteProject(form: FormData): Promise<void> {
  */
 export async function setProjectApproval(form: FormData): Promise<void> {
   await requirePermission("feature");
+  await ensureSchema();
   const id = str(form, "id");
   const decision = str(form, "decision");
   const patch =

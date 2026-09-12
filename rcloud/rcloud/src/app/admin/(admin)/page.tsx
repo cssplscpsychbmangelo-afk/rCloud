@@ -9,6 +9,7 @@ import { formatPeso } from "@/lib/format";
 import { Card, PageHeader, Warn } from "@/components/admin/Ui";
 import { StatCard } from "@/components/Cards";
 import { IconArrowRight } from "@/components/Icons";
+import { ensureSchema } from "@/lib/server/migrate";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const session = await getSession();
+  await ensureSchema();
   const [allResources, allProjects, summary] = await Promise.all([
     db.select().from(resources),
     db.select().from(projects),

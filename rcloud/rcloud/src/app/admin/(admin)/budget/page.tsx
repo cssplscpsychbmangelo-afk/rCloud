@@ -15,6 +15,7 @@ import {
 } from "@/components/admin/Ui";
 import { StatCard } from "@/components/Cards";
 import { formatPeso } from "@/lib/format";
+import { ensureSchema } from "@/lib/server/migrate";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function AdminBudgetPage({
   searchParams: Promise<{ saved?: string }>;
 }) {
   await requirePermission("finance");
+  await ensureSchema();
   const params = await searchParams;
   const summary = await getBudgetSummary();
   const [row] = await db.select({ updatedAt: budget.updatedAt }).from(budget);
