@@ -199,6 +199,7 @@ export async function toggleOfficer(form: FormData): Promise<void> {
 
 export async function saveProjectDetails(form: FormData): Promise<void> {
   await requirePermission("content");
+  const session = await requireSession();
   const id = str(form, "id");
   let imageUrl = str(form, "imageUrl") || null;
   try {
@@ -218,7 +219,7 @@ export async function saveProjectDetails(form: FormData): Promise<void> {
     imageUrl,
     documentLinks: str(form, "documentLinks"),
     transparencyNotes: str(form, "transparencyNotes"),
-    published: bool(form, "published"),
+    published: session.role === "head_admin" && bool(form, "published"),
     updatedAt: new Date(),
   };
   if (!values.name) redirect("/admin/projects?error=missing");
@@ -260,7 +261,7 @@ export async function deleteProject(form: FormData): Promise<void> {
 }
 
 export async function toggleProject(form: FormData): Promise<void> {
-  await requirePermission("content");
+  await requirePermission("feature");
   const id = str(form, "id");
   const [row] = await db.select().from(projects).where(eq(projects.id, id));
   if (row) {
@@ -275,7 +276,7 @@ export async function toggleProject(form: FormData): Promise<void> {
 /* -------------------------- content: announcements ------------------------- */
 
 export async function saveAnnouncement(form: FormData): Promise<void> {
-  await requirePermission("content");
+  await requirePermission("announcements");
   const id = str(form, "id");
   const publishedRaw = str(form, "publishedAt");
   const values = {
@@ -299,13 +300,14 @@ export async function saveAnnouncement(form: FormData): Promise<void> {
 }
 
 export async function deleteAnnouncement(form: FormData): Promise<void> {
-  await requirePermission("content");
+  await requirePermission("announcements");
   await db.delete(announcements).where(eq(announcements.id, str(form, "id")));
   back("/admin/announcements");
 }
 
 export async function toggleAnnouncement(form: FormData): Promise<void> {
-  await requirePermission("content");
+  if (str(form, "flag") === "featured") await requirePermission("feature");
+  else await requirePermission("announcements");
   const flag = str(form, "flag") === "featured" ? "featured" : "active";
   const id = str(form, "id");
   const [row] = await db.select().from(announcements).where(eq(announcements.id, id));

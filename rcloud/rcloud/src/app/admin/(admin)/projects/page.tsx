@@ -40,6 +40,7 @@ export default async function AdminProjectsPage({
   const params = await searchParams;
   const session = await getSession();
   const canFinance = session ? roleHasPermission(session.role, "finance") : false;
+  const canFeature = session ? roleHasPermission(session.role, "feature") : false;
   const rows = await db.select().from(projects).orderBy(desc(projects.createdAt));
   const editing = rows.find((p) => p.id === params?.edit) ?? null;
 
@@ -183,7 +184,7 @@ export default async function AdminProjectsPage({
                   <Td>
                     <div className="flex flex-wrap items-center gap-2">
                       <a href={`/admin/projects?edit=${row.id}`} className={btnGhostAdmin}>Edit</a>
-                      <RowAction action={toggleProject} id={row.id} label={row.published ? "Unpublish" : "Publish"} />
+                      {canFeature && <RowAction action={toggleProject} id={row.id} label={row.published ? "Unpublish" : "Publish"} />}
                       <RowAction action={deleteProject} id={row.id} label="Delete" tone="danger" />
                     </div>
                   </Td>

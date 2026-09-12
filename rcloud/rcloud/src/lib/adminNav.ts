@@ -52,7 +52,7 @@ export const adminNav: AdminNavItem[] = [
     href: "/admin/announcements",
     label: "Announcements",
     description: "Post council announcements and feature them on the home page.",
-    perm: "content",
+    perm: "announcements",
   },
   {
     href: "/admin/budget",
