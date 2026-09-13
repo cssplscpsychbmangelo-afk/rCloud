@@ -9,72 +9,81 @@ let schemaPromise: Promise<void> | null = null;
  * Netlify may start multiple server instances, so the SQL itself must remain
  * idempotent. The promise prevents repeated ALTER TABLE calls within one cold
  * start while still allowing separate instances to initialize safely.
+ *
+ * Resilient to missing DATABASE_URL / DB errors so that `next build` succeeds
+ * even when Netlify env vars are not set for a preview site.
  */
 export function ensureSchema(): Promise<void> {
   if (!schemaPromise) {
     schemaPromise = (async () => {
-      // Legacy: approval_status column
-      await db.execute(sql`
-        ALTER TABLE projects
-        ADD COLUMN IF NOT EXISTS approval_status text NOT NULL DEFAULT 'pending'
-      `);
+      try {
+        // Legacy: approval_status column
+        await db.execute(sql`
+          ALTER TABLE projects
+          ADD COLUMN IF NOT EXISTS approval_status text NOT NULL DEFAULT 'pending'
+        `);
 
-      // Roomfinder settings table
-      await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS roomfinder_settings (
-          id integer PRIMARY KEY DEFAULT 1,
-          sheet_id text NOT NULL DEFAULT '',
-          last_synced_at timestamp,
-          last_error text NOT NULL DEFAULT '',
-          tab_errors text NOT NULL DEFAULT '',
-          tab_count integer NOT NULL DEFAULT 0,
-          entry_count integer NOT NULL DEFAULT 0
-        )
-      `);
+        // Roomfinder settings table
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS roomfinder_settings (
+            id integer PRIMARY KEY DEFAULT 1,
+            sheet_id text NOT NULL DEFAULT '',
+            last_synced_at timestamp,
+            last_error text NOT NULL DEFAULT '',
+            tab_errors text NOT NULL DEFAULT '',
+            tab_count integer NOT NULL DEFAULT 0,
+            entry_count integer NOT NULL DEFAULT 0
+          )
+        `);
 
-      // Roomfinder entries table
-      await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS roomfinder_entries (
-          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-          room text NOT NULL,
-          day text NOT NULL,
-          start text NOT NULL,
-          "end" text NOT NULL,
-          course text,
-          section text,
-          instructor text,
-          building text,
-          position integer NOT NULL DEFAULT 0
-        )
-      `);
+        // Roomfinder entries table
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS roomfinder_entries (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            room text NOT NULL,
+            day text NOT NULL,
+            start text NOT NULL,
+            "end" text NOT NULL,
+            course text,
+            section text,
+            instructor text,
+            building text,
+            position integer NOT NULL DEFAULT 0
+          )
+        `);
 
-      // Site visibility settings
-      await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS site_settings (
-          id integer PRIMARY KEY DEFAULT 1,
-          show_roomfinder boolean NOT NULL DEFAULT true,
-          show_announcements boolean NOT NULL DEFAULT true,
-          show_resources boolean NOT NULL DEFAULT true,
-          show_transparency boolean NOT NULL DEFAULT true,
-          show_projects boolean NOT NULL DEFAULT true,
-          show_constituency boolean NOT NULL DEFAULT true,
-          show_officers boolean NOT NULL DEFAULT true,
-          show_about boolean NOT NULL DEFAULT true,
-          updated_at timestamp NOT NULL DEFAULT now()
-        )
-      `);
+        // Site visibility settings
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS site_settings (
+            id integer PRIMARY KEY DEFAULT 1,
+            show_roomfinder boolean NOT NULL DEFAULT true,
+            show_announcements boolean NOT NULL DEFAULT true,
+            show_resources boolean NOT NULL DEFAULT true,
+            show_transparency boolean NOT NULL DEFAULT true,
+            show_projects boolean NOT NULL DEFAULT true,
+            show_constituency boolean NOT NULL DEFAULT true,
+            show_officers boolean NOT NULL DEFAULT true,
+            show_about boolean NOT NULL DEFAULT true,
+            updated_at timestamp NOT NULL DEFAULT now()
+          )
+        `);
 
-      // Ensure default row exists for site_settings
-      await db.execute(sql`
-        INSERT INTO site_settings (id) VALUES (1)
-        ON CONFLICT (id) DO NOTHING
-      `);
+        // Ensure default row exists for site_settings
+        await db.execute(sql`
+          INSERT INTO site_settings (id) VALUES (1)
+          ON CONFLICT (id) DO NOTHING
+        `);
 
-      // Ensure default row exists for roomfinder_settings
-      await db.execute(sql`
-        INSERT INTO roomfinder_settings (id) VALUES (1)
-        ON CONFLICT (id) DO NOTHING
-      `);
+        // Ensure default row exists for roomfinder_settings
+        await db.execute(sql`
+          INSERT INTO roomfinder_settings (id) VALUES (1)
+          ON CONFLICT (id) DO NOTHING
+        `);
+      } catch (err) {
+        // During build without DATABASE_URL, silently ignore — runtime will
+        // handle missing DB via fallbacks in queries/siteVisibility.
+        console.warn("[rCloud] ensureSchema skipped (DB not available):", (err as Error).message);
+      }
     })();
   }
 
