@@ -101,6 +101,11 @@ export function OfficerCard({ officer }: { officer: Officer }) {
 /** Public cards show project-level totals only — never individual expenses. */
 export function ProjectCard({ project }: { project: Project }) {
   const remaining = project.approvedBudget - project.actualExpenditure;
+  // Only external http(s) links become a button — no link, no button.
+  const photoLink =
+    project.imageUrl && /^https?:\/\//i.test(project.imageUrl)
+      ? project.imageUrl
+      : null;
   return (
     <article className="flex h-full flex-col gap-4 rounded-[20px] border border-line bg-panel p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-vio-600/60">
       <div className="flex items-start justify-between gap-3">
@@ -110,6 +115,18 @@ export function ProjectCard({ project }: { project: Project }) {
         <StatusBadge status={project.status} />
       </div>
       <p className="text-sm leading-relaxed text-mist">{project.description}</p>
+
+      {photoLink && (
+        <a
+          href={photoLink}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-lg border border-line bg-panel-2 px-3.5 text-xs font-semibold text-vio-300 transition-colors duration-200 hover:border-vio-600/60 hover:bg-vio-950/60 hover:text-vio-200 active:border-vio-500 press"
+        >
+          View photo
+          <IconExternal size={13} />
+        </a>
+      )}
 
       <div className="mt-auto space-y-3 pt-2">
         <ProgressBar

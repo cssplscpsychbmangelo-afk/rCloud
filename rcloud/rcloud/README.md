@@ -51,6 +51,11 @@ enforcement happens in every server action (`requirePermission`) and page guard
 - **Account** (`/admin/account`, `account` permission) lets the Head Admin change
   the admin sign-in email and password. It requires the current password and
   never displays the current email or password.
+- **Projects** (`/admin/projects`, `content` permission) adds a project with
+  only what matters: name, description, status and an optional external photo
+  link — no image upload. The form shows the project's **Approved / Utilized /
+  Remaining** balance (₱0 until it is funded in Budget), and Head Admins
+  Approve or Reject Board-Member submissions in one click.
 - **Budget** (`/admin/budget`, `finance` permission) configures the total LSC
   budget *and* every project's approved budget / expenditure inline; allocated,
   utilized and remaining stay computed from published projects.
@@ -76,8 +81,9 @@ enforcement happens in every server action (`requirePermission`) and page guard
   remaining = allocated − utilized; project remaining = approved − actual,
   with admin over-budget warnings).
 - Admin mutations: `src/lib/server/actions.ts` (server actions).
-- Documents: admins paste external links (Drive/Docs); no large uploads.
-  Small images may be uploaded (≤400 KB, stored as data URLs).
+- Documents & photos: admins paste external links (Drive/Docs); no large
+  uploads. Only officer portraits may be uploaded (≤400 KB, stored as data
+  URLs) — projects take an optional external photo link instead.
 - Seed sources (original Carrd content): `src/lib/data/*.ts`.
 
 ## Deploy to Netlify (via GitHub)
