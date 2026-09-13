@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { contacts, navLinks } from "@/lib/data/site";
+import { contacts, navLinks as defaultNavLinks } from "@/lib/data/site";
 import Logo from "./Logo";
 import { IconFacebook, IconMail, IconPhone } from "./Icons";
 
@@ -13,14 +13,21 @@ const contactIcons = {
   mail: IconMail,
 };
 
+type NavLink = { label: string; href: string };
+
 /**
  * Sleek frosted navigation bar (Apple-inspired):
  * translucent blurred chrome, quiet small links with a hairline active
  * indicator, and a full-screen mobile sheet with large staggered links.
+ *
+ * Accepts filtered links from server (visibility toggles). Falls back to
+ * defaultNavLinks when no prop is provided (e.g. during static build).
  */
-export default function Nav() {
+export default function Nav({ links }: { links?: NavLink[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const navLinks = links && links.length > 0 ? links : (defaultNavLinks as unknown as NavLink[]);
 
   // Close the sheet on navigation
   useEffect(() => setOpen(false), [pathname]);

@@ -1193,17 +1193,24 @@ function ScheduleInfo({
   offline,
   count,
   days,
+  isPlaceholder,
 }: {
   meta: ScheduleMeta;
   offline: boolean;
   count: number;
   days: string[];
+  isPlaceholder?: boolean;
 }) {
   const savedAt = offline ? cacheSavedAt() : null;
   return (
     <div className="mt-12 border-t border-line pt-6">
+      {isPlaceholder && (
+        <p className="rounded-xl border border-vio-500/30 bg-vio-950/40 px-4 py-3 text-xs font-semibold leading-relaxed text-vio-200">
+          Showing placeholder schedule from <span className="font-mono">public/data/cssp-schedule.json</span>. Head admin can sync a custom Google Sheet (tabs = Room No.) in Admin → Roomivility to replace this with live data. Placeholders stay until you sync.
+        </p>
+      )}
       {meta.stale && (
-        <p className="rounded-xl border border-warn/30 bg-warn/10 px-4 py-3 text-xs font-semibold leading-relaxed text-warn">
+        <p className="mt-3 rounded-xl border border-warn/30 bg-warn/10 px-4 py-3 text-xs font-semibold leading-relaxed text-warn">
           Schedule may have changed. Please verify with the appropriate
           academic office or instructor.
         </p>
@@ -1509,6 +1516,7 @@ export default function RoomFinder() {
         offline={schedule.offline}
         count={entries.length}
         days={days}
+        isPlaceholder={schedule.isPlaceholder}
       />
 
       {/* Future extensions (map, exam finder, notifications) are

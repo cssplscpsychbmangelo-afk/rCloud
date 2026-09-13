@@ -121,3 +121,43 @@ export const constituencySettings = pgTable("constituency_settings", {
   tabErrors: text("tab_errors").notNull().default(""),
   tabCount: integer("tab_count").notNull().default(0),
 });
+
+/** Single-row settings for the Roomivility Google Sheet integration. */
+export const roomfinderSettings = pgTable("roomfinder_settings", {
+  id: integer("id").primaryKey().default(1),
+  sheetId: text("sheet_id").notNull().default(""),
+  lastSyncedAt: timestamp("last_synced_at"),
+  lastError: text("last_error").notNull().default(""),
+  /** Per-tab problems from the most recent refresh, one per line. */
+  tabErrors: text("tab_errors").notNull().default(""),
+  tabCount: integer("tab_count").notNull().default(0),
+  entryCount: integer("entry_count").notNull().default(0),
+});
+
+/** Roomivility schedule entries synced from the Sheet (tabs = Room No). */
+export const roomfinderEntries = pgTable("roomfinder_entries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  room: text("room").notNull(),
+  day: text("day").notNull(),
+  start: text("start").notNull(),
+  end: text("end").notNull(),
+  course: text("course"),
+  section: text("section"),
+  instructor: text("instructor"),
+  building: text("building"),
+  position: integer("position").notNull().default(0),
+});
+
+/** Single-row site visibility toggles (Head Admin only). */
+export const siteSettings = pgTable("site_settings", {
+  id: integer("id").primaryKey().default(1),
+  showRoomfinder: boolean("show_roomfinder").notNull().default(true),
+  showAnnouncements: boolean("show_announcements").notNull().default(true),
+  showResources: boolean("show_resources").notNull().default(true),
+  showTransparency: boolean("show_transparency").notNull().default(true),
+  showProjects: boolean("show_projects").notNull().default(true),
+  showConstituency: boolean("show_constituency").notNull().default(true),
+  showOfficers: boolean("show_officers").notNull().default(true),
+  showAbout: boolean("show_about").notNull().default(true),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

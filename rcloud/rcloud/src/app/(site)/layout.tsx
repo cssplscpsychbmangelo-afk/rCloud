@@ -1,4 +1,4 @@
-import Nav from "@/components/Nav";
+import SiteNav from "@/components/SiteNav";
 import Footer from "@/components/Footer";
 
 /**
@@ -19,7 +19,7 @@ export default function SiteLayout({
       >
         Skip to content
       </a>
-      <Nav />
+      <SiteNav />
       <main id="main">{children}</main>
       <Footer />
     </>

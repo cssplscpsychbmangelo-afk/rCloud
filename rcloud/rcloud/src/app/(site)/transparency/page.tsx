@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Reveal from "@/components/Reveal";
 import { StatCard } from "@/components/Cards";
 import ProgressBar from "@/components/ProgressBar";
+import HiddenPage from "@/components/HiddenPage";
 import {
   IconClock,
   IconExternal,
@@ -10,6 +11,7 @@ import {
   IconCoins,
 } from "@/components/Icons";
 import { getBudgetSummary, getResources } from "@/lib/server/queries";
+import { getSiteVisibility } from "@/lib/server/siteVisibility";
 import { formatPeso, percentOf } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -35,10 +37,16 @@ const documentIcons: Record<string, typeof IconFolder> = {
 };
 
 export default async function TransparencyPage() {
-  const [summary, resources] = await Promise.all([
+  const [visibility, summary, resources] = await Promise.all([
+    getSiteVisibility(),
     getBudgetSummary(),
     getResources(),
   ]);
+
+  if (!visibility.showTransparency) {
+    return <HiddenPage title="Transparency" eyebrow="Open books" />;
+  }
+
   const documents = resources.filter((r) => documentTitles.includes(r.title));
 
   return (

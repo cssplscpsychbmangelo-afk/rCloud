@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Reveal from "@/components/Reveal";
 import BackHome from "@/components/BackHome";
 import ProjectsBoard from "@/components/ProjectsBoard";
+import HiddenPage from "@/components/HiddenPage";
 import { getProjects } from "@/lib/server/queries";
+import { getSiteVisibility } from "@/lib/server/siteVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +15,14 @@ export const metadata: Metadata = {
 };
 
 export default async function ProjectsPage() {
-  const projects = await getProjects();
+  const [visibility, projects] = await Promise.all([
+    getSiteVisibility(),
+    getProjects(),
+  ]);
+
+  if (!visibility.showProjects) {
+    return <HiddenPage title="Projects" eyebrow="Resolutions in action" />;
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">

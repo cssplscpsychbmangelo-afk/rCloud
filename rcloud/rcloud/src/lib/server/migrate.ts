@@ -12,12 +12,70 @@ let schemaPromise: Promise<void> | null = null;
  */
 export function ensureSchema(): Promise<void> {
   if (!schemaPromise) {
-    schemaPromise = db
-      .execute(sql`
+    schemaPromise = (async () => {
+      // Legacy: approval_status column
+      await db.execute(sql`
         ALTER TABLE projects
         ADD COLUMN IF NOT EXISTS approval_status text NOT NULL DEFAULT 'pending'
-      `)
-      .then(() => undefined);
+      `);
+
+      // Roomfinder settings table
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS roomfinder_settings (
+          id integer PRIMARY KEY DEFAULT 1,
+          sheet_id text NOT NULL DEFAULT '',
+          last_synced_at timestamp,
+          last_error text NOT NULL DEFAULT '',
+          tab_errors text NOT NULL DEFAULT '',
+          tab_count integer NOT NULL DEFAULT 0,
+          entry_count integer NOT NULL DEFAULT 0
+        )
+      `);
+
+      // Roomfinder entries table
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS roomfinder_entries (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          room text NOT NULL,
+          day text NOT NULL,
+          start text NOT NULL,
+          "end" text NOT NULL,
+          course text,
+          section text,
+          instructor text,
+          building text,
+          position integer NOT NULL DEFAULT 0
+        )
+      `);
+
+      // Site visibility settings
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS site_settings (
+          id integer PRIMARY KEY DEFAULT 1,
+          show_roomfinder boolean NOT NULL DEFAULT true,
+          show_announcements boolean NOT NULL DEFAULT true,
+          show_resources boolean NOT NULL DEFAULT true,
+          show_transparency boolean NOT NULL DEFAULT true,
+          show_projects boolean NOT NULL DEFAULT true,
+          show_constituency boolean NOT NULL DEFAULT true,
+          show_officers boolean NOT NULL DEFAULT true,
+          show_about boolean NOT NULL DEFAULT true,
+          updated_at timestamp NOT NULL DEFAULT now()
+        )
+      `);
+
+      // Ensure default row exists for site_settings
+      await db.execute(sql`
+        INSERT INTO site_settings (id) VALUES (1)
+        ON CONFLICT (id) DO NOTHING
+      `);
+
+      // Ensure default row exists for roomfinder_settings
+      await db.execute(sql`
+        INSERT INTO roomfinder_settings (id) VALUES (1)
+        ON CONFLICT (id) DO NOTHING
+      `);
+    })();
   }
 
   return schemaPromise;

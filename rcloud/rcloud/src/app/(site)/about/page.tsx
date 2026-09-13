@@ -3,6 +3,7 @@ import Image from "next/image";
 import Reveal from "@/components/Reveal";
 import BackHome from "@/components/BackHome";
 import { SectionHeading } from "@/components/Primitives";
+import HiddenPage from "@/components/HiddenPage";
 import {
   IconChart,
   IconCloud,
@@ -14,12 +15,15 @@ import {
   IconUsers,
 } from "@/components/Icons";
 import { contacts, site } from "@/lib/data/site";
+import { getSiteVisibility } from "@/lib/server/siteVisibility";
 
 export const metadata: Metadata = {
   title: "About",
   description:
     "What rCloud is, who runs it, and how to reach the CSSP Local Student Council.",
 };
+
+export const dynamic = "force-dynamic";
 
 const pillars = [
   {
@@ -50,7 +54,13 @@ const contactIcons = {
   mail: IconMail,
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const visibility = await getSiteVisibility();
+
+  if (!visibility.showAbout) {
+    return <HiddenPage title="The council, in the open." eyebrow="About rCloud" />;
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <div className="mb-8">

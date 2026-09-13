@@ -69,6 +69,20 @@ export const adminNav: AdminNavItem[] = [
     perm: "constituency",
   },
   {
+    href: "/admin/roomfinder",
+    label: "Roomivility",
+    description:
+      "Connect the Roomivility Google Sheet — tabs are Room No. — and sync room schedules. Placeholders stay until you sync.",
+    perm: "roomfinder",
+  },
+  {
+    href: "/admin/site-visibility",
+    label: "Site Visibility",
+    description:
+      "Toggle which pages and homepage sections are visible to students. Main admin only.",
+    perm: "site_visibility",
+  },
+  {
     href: "/admin/account",
     label: "Account",
     description:

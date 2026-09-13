@@ -13,6 +13,9 @@ import {
   projects,
   resources,
   users,
+  roomfinderEntries,
+  roomfinderSettings,
+  siteSettings,
 } from "./schema";
 import {
   createSession,
@@ -22,7 +25,14 @@ import {
   hashPassword,
   verifyPassword,
 } from "./auth";
-import { parseSheetId, readConstituencySheet } from "./constituencySheet";
+import { parseSheetId as parseConstituencySheetId, readConstituencySheet } from "./constituencySheet";
+import {
+  parseSheetId as parseRoomfinderSheetId,
+  readRoomfinderSheet,
+  extractEntriesFromXlsx,
+  readEntriesFromRows,
+  parseCsv,
+} from "./roomfinderSheet";
 import { ensureSchema } from "./migrate";
 
 /* --------------------------------- helpers -------------------------------- */
@@ -221,13 +231,8 @@ export async function saveProjectDetails(form: FormData): Promise<void> {
   };
 
   if (id) {
-    // Editing keeps the project's current review state — publishing is a
-    // separate, one-click action (Approve / Reject), not part of editing.
     await db.update(projects).set(values).where(eq(projects.id, id));
   } else {
-    // New projects: Head Admin publishes immediately; Board Members submit a
-    // request that waits for Head-Admin approval. The date defaults to today so
-    // the project lands in the current month on the public Projects board.
     const isHeadAdmin = session.role === "head_admin";
     await db.insert(projects).values({
       ...values,
@@ -241,7 +246,6 @@ export async function saveProjectDetails(form: FormData): Promise<void> {
 
 /**
  * Finance-only: approved budget + actual expenditure per project.
- * Editable from Projects and from the Budget section (returnTo=budget).
  */
 export async function saveProjectFinance(form: FormData): Promise<void> {
   await requirePermission("finance");
@@ -269,10 +273,6 @@ export async function deleteProject(form: FormData): Promise<void> {
   back("/admin/projects");
 }
 
-/**
- * Head-admin decision on a Board Member's project request.
- * decision: "approve" → publish; "reject" → declined; "unpublish" → back to review.
- */
 export async function setProjectApproval(form: FormData): Promise<void> {
   await requirePermission("feature");
   await ensureSchema();
@@ -354,13 +354,6 @@ export async function saveBudget(form: FormData): Promise<void> {
 
 /* ------------------------- account (main admin only) ---------------------- */
 
-/**
- * Changes the signed-in admin's sign-in email and/or password.
- *
- * Guarded by the "account" permission (Head Admin only) and by a check of the
- * current password, so nobody can take over an account with a stale session.
- * The current email and password are never displayed or returned.
- */
 export async function updateAdminCredentials(form: FormData): Promise<void> {
   await requirePermission("account");
   const session = await requireSession();
@@ -405,8 +398,9 @@ export async function updateAdminCredentials(form: FormData): Promise<void> {
 
 export async function saveConstituencySettings(form: FormData): Promise<void> {
   await requirePermission("constituency");
-  const sheetId = parseSheetId(str(form, "sheetUrl"));
+  const sheetId = parseConstituencySheetId(str(form, "sheetUrl"));
   if (!sheetId) redirect("/admin/constituency?error=sheet");
+  await ensureSchema();
   await db
     .insert(constituencySettings)
     .values({ id: 1, sheetId })
@@ -416,6 +410,7 @@ export async function saveConstituencySettings(form: FormData): Promise<void> {
 
 export async function refreshConstituency(): Promise<void> {
   await requirePermission("constituency");
+  await ensureSchema();
   const [settings] = await db.select().from(constituencySettings).limit(1);
   if (!settings?.sheetId) redirect("/admin/constituency?error=sheet");
 
@@ -453,6 +448,244 @@ export async function refreshConstituency(): Promise<void> {
     })
     .where(eq(constituencySettings.id, 1));
   back("/admin/constituency?synced=1");
+}
+
+/* --------------------- roomfinder (Google Sheets + XLSX upload) ------------------- */
+
+export async function saveRoomfinderSettings(form: FormData): Promise<void> {
+  await requirePermission("roomfinder");
+  await ensureSchema();
+  const sheetId = parseRoomfinderSheetId(str(form, "sheetUrl"));
+  if (!sheetId) redirect("/admin/roomfinder?error=sheet");
+  await db
+    .insert(roomfinderSettings)
+    .values({ id: 1, sheetId })
+    .onConflictDoUpdate({ target: roomfinderSettings.id, set: { sheetId } });
+  back("/admin/roomfinder?saved=1");
+}
+
+export async function refreshRoomfinder(): Promise<void> {
+  await requirePermission("roomfinder");
+  await ensureSchema();
+  const [settings] = await db.select().from(roomfinderSettings).limit(1);
+  if (!settings?.sheetId) redirect("/admin/roomfinder?error=sheet");
+
+  const result = await readRoomfinderSheet(settings.sheetId);
+  if (!result.ok) {
+    await db
+      .update(roomfinderSettings)
+      .set({ lastError: result.reason })
+      .where(eq(roomfinderSettings.id, 1));
+    redirect("/admin/roomfinder?error=refresh");
+  }
+
+  // Replace all entries
+  await db.delete(roomfinderEntries);
+  if (result.entries.length > 0) {
+    // Batch insert in chunks to avoid too large payload
+    const chunkSize = 200;
+    for (let i = 0; i < result.entries.length; i += chunkSize) {
+      const chunk = result.entries.slice(i, i + chunkSize).map((e, idx) => ({
+        room: e.room,
+        day: e.day,
+        start: e.start,
+        end: e.end,
+        course: e.course || null,
+        section: e.section || null,
+        instructor: e.instructor || null,
+        building: e.building || null,
+        position: i + idx,
+      }));
+      await db.insert(roomfinderEntries).values(chunk);
+    }
+  }
+
+  const tabErrors = result.failures.map((f) => `${f.tab}: ${f.reason}`).join("\n");
+  await db
+    .update(roomfinderSettings)
+    .set({
+      lastSyncedAt: new Date(),
+      lastError: "",
+      tabErrors,
+      tabCount: result.tabs.length,
+      entryCount: result.entries.length,
+    })
+    .where(eq(roomfinderSettings.id, 1));
+
+  back("/admin/roomfinder?synced=1");
+}
+
+export async function uploadRoomfinderFile(form: FormData): Promise<void> {
+  await requirePermission("roomfinder");
+  await ensureSchema();
+
+  const file = form.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    redirect("/admin/roomfinder?error=file");
+  }
+
+  // Limit file size to ~5MB for Netlify free tier friendliness
+  if (file.size > 5_000_000) {
+    redirect("/admin/roomfinder?error=large");
+  }
+
+  const buffer = await file.arrayBuffer();
+  const name = file.name.toLowerCase();
+
+  let entries: { room: string; day: string; start: string; end: string; course?: string; section?: string; instructor?: string; building?: string }[] = [];
+  let failures: { tab: string; reason: string }[] = [];
+  let tabs: string[] = [];
+
+  if (name.endsWith(".xlsx")) {
+    const result = extractEntriesFromXlsx(buffer);
+    entries = result.entries;
+    failures = result.failures;
+    tabs = result.tabs;
+    if (entries.length === 0 && failures.length > 0) {
+      // Save error for display
+      await db
+        .update(roomfinderSettings)
+        .set({ lastError: failures.map((f) => `${f.tab}: ${f.reason}`).join("\n") })
+        .where(eq(roomfinderSettings.id, 1));
+      redirect("/admin/roomfinder?error=parse");
+    }
+  } else if (name.endsWith(".csv")) {
+    // Single CSV — treat as one room? Require room name in form
+    const roomHint = str(form, "room") || file.name.replace(/\.csv$/i, "").trim() || "Unknown";
+    const text = new TextDecoder().decode(buffer);
+    const { entries: csvEntries, invalid } = (() => {
+      const rows = parseCsv(text);
+      return readEntriesFromRows(rows, roomHint);
+    })();
+    entries = csvEntries;
+    tabs = [roomHint];
+    if (invalid > 0) {
+      failures.push({ tab: roomHint, reason: `${invalid} rows skipped` });
+    }
+    if (entries.length === 0) {
+      await db
+        .update(roomfinderSettings)
+        .set({ lastError: `No valid rows in CSV ${file.name}. Expected Day, Start, End.` })
+        .where(eq(roomfinderSettings.id, 1));
+      redirect("/admin/roomfinder?error=parse");
+    }
+  } else if (name.endsWith(".json")) {
+    try {
+      const text = new TextDecoder().decode(buffer);
+      const json = JSON.parse(text);
+      // Accept either { entries: [...] } or { meta, entries } like public/data file
+      const rawEntries = Array.isArray(json) ? json : json.entries;
+      if (!Array.isArray(rawEntries)) throw new Error("Invalid JSON");
+      for (const e of rawEntries) {
+        if (typeof e !== "object" || !e) continue;
+        const day = String((e as any).day ?? "").trim();
+        const start = String((e as any).start ?? "").trim();
+        const end = String((e as any).end ?? "").trim();
+        const room = String((e as any).room ?? "").trim();
+        if (!day || !start || !end || !room) continue;
+        entries.push({
+          room,
+          day,
+          start,
+          end,
+          course: (e as any).course ? String((e as any).course).trim() : undefined,
+          section: (e as any).section ? String((e as any).section).trim() : undefined,
+          instructor: (e as any).instructor ? String((e as any).instructor).trim() : undefined,
+          building: (e as any).building ? String((e as any).building).trim() : undefined,
+        });
+      }
+      tabs = Array.from(new Set(entries.map((e) => e.room)));
+    } catch (err) {
+      await db
+        .update(roomfinderSettings)
+        .set({ lastError: `JSON parse failed: ${(err as Error).message}` })
+        .where(eq(roomfinderSettings.id, 1));
+      redirect("/admin/roomfinder?error=parse");
+    }
+  } else {
+    redirect("/admin/roomfinder?error=type");
+  }
+
+  if (entries.length === 0) {
+    redirect("/admin/roomfinder?error=empty");
+  }
+
+  await db.delete(roomfinderEntries);
+  const chunkSize = 200;
+  for (let i = 0; i < entries.length; i += chunkSize) {
+    const chunk = entries.slice(i, i + chunkSize).map((e, idx) => ({
+      room: e.room,
+      day: e.day,
+      start: e.start,
+      end: e.end,
+      course: e.course || null,
+      section: e.section || null,
+      instructor: e.instructor || null,
+      building: e.building || null,
+      position: i + idx,
+    }));
+    await db.insert(roomfinderEntries).values(chunk);
+  }
+
+  const tabErrors = failures.map((f) => `${f.tab}: ${f.reason}`).join("\n");
+  await db
+    .update(roomfinderSettings)
+    .set({
+      lastSyncedAt: new Date(),
+      lastError: "",
+      tabErrors,
+      tabCount: tabs.length,
+      entryCount: entries.length,
+    })
+    .where(eq(roomfinderSettings.id, 1));
+
+  back("/admin/roomfinder?synced=1");
+}
+
+export async function clearRoomfinderData(): Promise<void> {
+  await requirePermission("roomfinder");
+  await ensureSchema();
+  await db.delete(roomfinderEntries);
+  await db
+    .update(roomfinderSettings)
+    .set({
+      lastSyncedAt: null,
+      lastError: "",
+      tabErrors: "",
+      tabCount: 0,
+      entryCount: 0,
+    })
+    .where(eq(roomfinderSettings.id, 1));
+  back("/admin/roomfinder?cleared=1");
+}
+
+/* --------------------- site visibility (Head Admin only) ------------------- */
+
+export async function saveSiteVisibility(form: FormData): Promise<void> {
+  await requirePermission("site_visibility");
+  await ensureSchema();
+
+  // Checkbox: "on" if checked, otherwise missing -> false
+  const values = {
+    showRoomfinder: bool(form, "showRoomfinder"),
+    showAnnouncements: bool(form, "showAnnouncements"),
+    showResources: bool(form, "showResources"),
+    showTransparency: bool(form, "showTransparency"),
+    showProjects: bool(form, "showProjects"),
+    showConstituency: bool(form, "showConstituency"),
+    showOfficers: bool(form, "showOfficers"),
+    showAbout: bool(form, "showAbout"),
+    updatedAt: new Date(),
+  };
+
+  const [existing] = await db.select().from(siteSettings).limit(1);
+  if (existing) {
+    await db.update(siteSettings).set(values).where(eq(siteSettings.id, 1));
+  } else {
+    await db.insert(siteSettings).values({ id: 1, ...values });
+  }
+
+  back("/admin/site-visibility?saved=1");
 }
 
 /* ------------------------------ shared reorder ----------------------------- */
