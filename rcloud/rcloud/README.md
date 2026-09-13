@@ -160,6 +160,64 @@ details and the timestamps change.
   service account required; the reader only uses the public read endpoints and
   keeps the Sheet URL out of public markup).
 
+## Roomivility (CSSP Room Finder)
+
+**Roomivility** — "room availability" — is the student-facing **schedule
+viewer** at `/room-finder` (also linked in the navigation and featured on the
+homepage). Students can find rooms free at a
+given day/time, look up where a class meets, browse a room's day timeline and
+view the full schedule as a sortable table. It is deliberately **not** a
+booking or room-management system — no accounts, no tracking, no writes.
+
+- **Static data, client-side everything.** The schedule lives in
+  `public/data/cssp-schedule.json` (served at `/data/cssp-schedule.json`).
+  The interface fetches that one small file per visit; searching, filtering,
+  sorting and availability checks all run in the browser. No database, no
+  per-search requests, no polling/WebSockets — effectively free to host on
+  Netlify's free tier.
+- **Offline-friendly.** After the first successful load the dataset is cached
+  in `localStorage`; if the connection drops the Room Finder keeps working
+  from the cache and clearly shows "Using the most recently loaded schedule."
+- **Honest statuses.** 🟢 Available / 🔴 Occupied / ⚪ No scheduled class are
+  derived only from the published schedule, and the UI states that
+  availability does not guarantee physical access. Days and time slots shown
+  are derived from the dataset — nothing is fabricated, and empty states say
+  so.
+- **Privacy.** No accounts, no search history, no analytics on room lookups;
+  the only storage is the schedule cache described above.
+
+### Updating the schedule (administrator workflow)
+
+Edit **only** `public/data/cssp-schedule.json` and redeploy — no code changes
+are needed:
+
+```json
+{
+  "meta": {
+    "updated": "2026-09-07",
+    "source": "Office of the College Registrar — 1st Semester AY 2026–2027",
+    "term": "1st Semester, AY 2026–2027",
+    "sample": false,
+    "stale": false
+  },
+  "entries": [
+    { "day": "Monday", "start": "08:00", "end": "09:30",
+      "course": "PSY 101", "section": "BSP 3A", "room": "301" }
+  ]
+}
+```
+
+- `meta.updated` / `meta.source` are displayed verbatim as **SCHEDULE
+  UPDATED** / **SOURCE**. Set `"stale": true` to show the "Schedule may have
+  changed" warning. Always keep the `source` value pointing at the real
+  origin of the data that is loaded.
+- `course`, `section`, `instructor`, `building` are optional per entry and
+  rendered only when present. Never add fields the official source does not
+  have — the interface shows exactly what the file contains.
+- The file is fetched with short edge caching (`netlify.toml`:
+  `max-age=300, stale-while-revalidate`), so updates propagate within minutes
+  without a rebuild-heavy workflow.
+
 ## Verified
 
 Headless-browser suite (`/tmp/e2e/test-admin.js` in the build sandbox) covers:

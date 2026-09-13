@@ -13,8 +13,11 @@ if (!connectionString) {
 // Serverless-friendly: postgres-js with conservative connection limits.
 // prepare:false keeps prepared statements client-side so Neon's connection
 // pooler (PgBouncer) works as well as direct connections.
+// PGPOOL_MAX overrides the pool size (3 by default) — useful for local
+// databases that only handle one connection at a time.
+const poolMax = Number(process.env.PGPOOL_MAX ?? 3);
 const client = postgres(connectionString, {
-  max: 3,
+  max: Number.isFinite(poolMax) && poolMax > 0 ? poolMax : 3,
   connect_timeout: 10,
   max_lifetime: 60 * 30,
   prepare: false,
