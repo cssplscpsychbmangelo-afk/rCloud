@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Reveal from "@/components/Reveal";
 import BackHome from "@/components/BackHome";
 import ConstituencyBrowser from "@/components/ConstituencyBrowser";
+import HiddenPage from "@/components/HiddenPage";
 import { getConstituency } from "@/lib/server/queries";
+import { getSiteVisibility } from "@/lib/server/siteVisibility";
 import { PUBLIC_UNAVAILABLE } from "@/lib/server/constituencySheet";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +24,16 @@ function formatSyncedAt(date: Date): string {
 }
 
 export default async function ConstituencyPage() {
-  const { periods, lastSyncedAt } = await getConstituency();
+  const [visibility, data] = await Promise.all([
+    getSiteVisibility(),
+    getConstituency(),
+  ]);
+
+  if (!visibility.showConstituency) {
+    return <HiddenPage title="How CSSP is doing" eyebrow="Constituency check" />;
+  }
+
+  const { periods, lastSyncedAt } = data;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">

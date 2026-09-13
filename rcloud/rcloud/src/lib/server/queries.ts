@@ -21,59 +21,79 @@ import type {
 import { site } from "../data/site";
 import { ensureSchema } from "./migrate";
 
-/** Public read model — every public page renders from these queries. */
+/** Public read model — every public page renders from these queries.
+ *  All functions are resilient to missing DATABASE_URL / DB errors so that
+ *  `next build` succeeds even when Netlify env vars are not set for a site.
+ *  In that case they return empty/default data and the UI shows placeholders.
+ */
 
 export async function getResources(): Promise<Resource[]> {
-  const rows = await db
-    .select()
-    .from(resources)
-    .where(eq(resources.active, true))
-    .orderBy(asc(resources.displayOrder));
-  return rows.map((r) => ({
-    id: r.id,
-    title: r.title,
-    description: r.description,
-    url: r.url,
-    internal: r.internal,
-    category: r.category,
-    icon: r.icon,
-    tags: r.tags ? r.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
-    featured: r.featured,
-    active: r.active,
-    displayOrder: r.displayOrder,
-  }));
+  try {
+    const rows = await db
+      .select()
+      .from(resources)
+      .where(eq(resources.active, true))
+      .orderBy(asc(resources.displayOrder));
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      url: r.url,
+      internal: r.internal,
+      category: r.category,
+      icon: r.icon,
+      tags: r.tags ? r.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+      featured: r.featured,
+      active: r.active,
+      displayOrder: r.displayOrder,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function getFeaturedResources(): Promise<Resource[]> {
-  return (await getResources()).filter((r) => r.featured);
+  try {
+    return (await getResources()).filter((r) => r.featured);
+  } catch {
+    return [];
+  }
 }
 
 export async function getOfficers(): Promise<Officer[]> {
-  const rows = await db
-    .select()
-    .from(officers)
-    .where(eq(officers.active, true))
-    .orderBy(asc(officers.displayOrder));
-  return rows.map((o) => ({
-    id: o.id,
-    name: o.name,
-    position: o.portfolio ? `${o.position} — ${o.portfolio}` : o.position,
-    portfolio: o.portfolio,
-    description: o.description,
-    photoUrl: o.photoUrl,
-    displayOrder: o.displayOrder,
-    active: o.active,
-  }));
+  try {
+    const rows = await db
+      .select()
+      .from(officers)
+      .where(eq(officers.active, true))
+      .orderBy(asc(officers.displayOrder));
+    return rows.map((o) => ({
+      id: o.id,
+      name: o.name,
+      position: o.portfolio ? `${o.position} — ${o.portfolio}` : o.position,
+      portfolio: o.portfolio,
+      description: o.description,
+      photoUrl: o.photoUrl,
+      displayOrder: o.displayOrder,
+      active: o.active,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function getProjects(): Promise<Project[]> {
-  await ensureSchema();
-  const rows = await db
-    .select()
-    .from(projects)
-    .where(eq(projects.published, true))
-    .orderBy(desc(projects.createdAt));
-  return rows.map(mapProject);
+  try {
+    await ensureSchema();
+    const rows = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.published, true))
+      .orderBy(desc(projects.createdAt));
+    return rows.map(mapProject);
+  } catch {
+    return [];
+  }
 }
 
 function mapProject(p: typeof projects.$inferSelect): Project {
@@ -98,63 +118,81 @@ function mapProject(p: typeof projects.$inferSelect): Project {
 
 /** Totals are always computed from the records — never hand-entered. */
 export async function getBudgetSummary(): Promise<BudgetSummary> {
-  await ensureSchema();
-  const [row] = await db.select().from(budget);
-  const published = await db
-    .select()
-    .from(projects)
-    .where(eq(projects.published, true));
+  try {
+    await ensureSchema();
+    const [row] = await db.select().from(budget);
+    const published = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.published, true));
 
-  const allocated = published.reduce((sum, p) => sum + p.approvedBudget, 0);
-  const utilized = published.reduce((sum, p) => sum + p.actualExpenditure, 0);
+    const allocated = published.reduce((sum, p) => sum + p.approvedBudget, 0);
+    const utilized = published.reduce((sum, p) => sum + p.actualExpenditure, 0);
 
-  return {
-    totalBudget: row?.totalBudget ?? 0,
-    allocated,
-    utilized,
-    remaining: allocated - utilized,
-    period: `AY ${site.term}`,
-  };
+    return {
+      totalBudget: row?.totalBudget ?? 0,
+      allocated,
+      utilized,
+      remaining: allocated - utilized,
+      period: `AY ${site.term}`,
+    };
+  } catch {
+    return {
+      totalBudget: 0,
+      allocated: 0,
+      utilized: 0,
+      remaining: 0,
+      period: `AY ${site.term}`,
+    };
+  }
 }
 
 /** Latest active announcements for the home feed — capped at three. */
 export async function getAnnouncements(): Promise<Announcement[]> {
-  const rows = await db
-    .select()
-    .from(announcements)
-    .where(eq(announcements.active, true))
-    .orderBy(desc(announcements.publishedAt))
-    .limit(3);
-  return rows.map((a) => ({
-    id: a.id,
-    title: a.title,
-    content: a.content,
-    category: a.category,
-    externalUrl: a.externalUrl,
-    featured: a.featured,
-    date: a.publishedAt.toISOString(),
-  }));
+  try {
+    const rows = await db
+      .select()
+      .from(announcements)
+      .where(eq(announcements.active, true))
+      .orderBy(desc(announcements.publishedAt))
+      .limit(3);
+    return rows.map((a) => ({
+      id: a.id,
+      title: a.title,
+      content: a.content,
+      category: a.category,
+      externalUrl: a.externalUrl,
+      featured: a.featured,
+      date: a.publishedAt.toISOString(),
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function getConstituency(): Promise<{
   periods: ConstituencyPeriod[];
   lastSyncedAt: Date | null;
 }> {
-  const [rows, settings] = await Promise.all([
-    db
-      .select()
-      .from(constituencyPeriods)
-      .orderBy(asc(constituencyPeriods.position)),
-    db.select().from(constituencySettings).limit(1),
-  ]);
-  return {
-    periods: rows.map((r) => ({
-      id: r.id,
-      label: r.label,
-      safe: r.safe,
-      baha: r.baha,
-      internet: r.internet,
-    })),
-    lastSyncedAt: settings[0]?.lastSyncedAt ?? null,
-  };
+  try {
+    const [rows, settings] = await Promise.all([
+      db
+        .select()
+        .from(constituencyPeriods)
+        .orderBy(asc(constituencyPeriods.position)),
+      db.select().from(constituencySettings).limit(1),
+    ]);
+    return {
+      periods: rows.map((r) => ({
+        id: r.id,
+        label: r.label,
+        safe: r.safe,
+        baha: r.baha,
+        internet: r.internet,
+      })),
+      lastSyncedAt: settings[0]?.lastSyncedAt ?? null,
+    };
+  } catch {
+    return { periods: [], lastSyncedAt: null };
+  }
 }

@@ -8,3 +8,16 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Static schedule dataset for the CSSP Room Finder. Short max-age so admin
+# updates propagate quickly; stale-while-revalidate keeps repeat visits fast.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300, stale-while-revalidate=604800"
+
+# API for live roomfinder schedule — cache 5 min, stale 1 hour
+[[headers]]
+  for = "/api/roomfinder/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300, stale-while-revalidate=3600"

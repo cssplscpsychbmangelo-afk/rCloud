@@ -18,6 +18,12 @@
   [headers.values]
     Cache-Control = "public, max-age=300, stale-while-revalidate=604800"
 
+# API for live roomfinder schedule — cache 5 min, stale 1 hour
+[[headers]]
+  for = "/api/roomfinder/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300, stale-while-revalidate=3600"
+
 # SPA-style fallbacks are handled by the Next.js plugin;
 # add redirects here only for legacy URLs, e.g.:
 # [[redirects]]

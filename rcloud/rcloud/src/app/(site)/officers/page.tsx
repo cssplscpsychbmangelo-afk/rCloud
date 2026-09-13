@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Reveal from "@/components/Reveal";
 import BackHome from "@/components/BackHome";
 import { OfficerCard } from "@/components/Cards";
+import HiddenPage from "@/components/HiddenPage";
 import { site } from "@/lib/data/site";
 import { getOfficers } from "@/lib/server/queries";
+import { getSiteVisibility } from "@/lib/server/siteVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,14 @@ export const metadata: Metadata = {
 };
 
 export default async function OfficersPage() {
-  const officers = await getOfficers();
+  const [visibility, officers] = await Promise.all([
+    getSiteVisibility(),
+    getOfficers(),
+  ]);
+
+  if (!visibility.showOfficers) {
+    return <HiddenPage title="LSC Officers" eyebrow={`AY ${site.term}`} />;
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">

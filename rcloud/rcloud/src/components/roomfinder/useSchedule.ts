@@ -12,11 +12,14 @@ import {
  * availability math then runs client-side — no request is ever made for a
  * search, filter or room lookup.
  *
- * Network model: one small static fetch → everything local afterwards.
+ * Network model: one small fetch → everything local afterwards.
+ * Tries the live API (/api/roomfinder/schedule) first (DB-synced sheet),
+ * falls back to the static placeholder JSON (/data/cssp-schedule.json).
  * If the refresh fails but a cached copy exists, the room finder keeps
  * working with the most recently loaded schedule (clearly labelled).
  */
 
+const API_URL = "/api/roomfinder/schedule";
 const DATA_URL = "/data/cssp-schedule.json";
 const CACHE_KEY = "rcloud.roomfinder.schedule.v1";
 
@@ -28,6 +31,8 @@ export interface ScheduleState {
   status: "loading" | "ready" | "error";
   /** True when showing the locally cached copy because the refresh failed. */
   offline: boolean;
+  /** True when using the placeholder static file (no custom sheet yet). */
+  isPlaceholder: boolean;
   retry: () => void;
 }
 
@@ -67,6 +72,7 @@ export function useSchedule(): ScheduleState {
     "loading",
   );
   const [offline, setOffline] = useState(false);
+  const [isPlaceholder, setIsPlaceholder] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const dataRef = useRef<ScheduleDataset | null>(null);
   const hydrated = useRef(false);
@@ -87,22 +93,43 @@ export function useSchedule(): ScheduleState {
       }
     });
 
-    fetch(DATA_URL, { cache: "no-cache" })
-      .then((response) => {
+    async function load() {
+      // 1) Try live API (DB-synced sheet)
+      try {
+        const res = await fetch(API_URL, { cache: "no-cache" });
+        if (res.status === 200) {
+          const raw = await res.json();
+          const clean = sanitizeDataset(raw);
+          if (!clean) throw new Error("malformed api schedule");
+          if (cancelled) return;
+          writeCache(clean);
+          dataRef.current = clean;
+          setData(clean);
+          setStatus("ready");
+          setOffline(false);
+          setIsPlaceholder(false);
+          return;
+        }
+        // 204 means no custom sheet — fall through to placeholder
+      } catch {
+        // API failed, try placeholder next
+      }
+
+      // 2) Fallback to static placeholder JSON
+      try {
+        const response = await fetch(DATA_URL, { cache: "no-cache" });
         if (!response.ok) throw new Error(String(response.status));
-        return response.json();
-      })
-      .then((raw) => {
-        if (cancelled) return;
+        const raw = await response.json();
         const clean = sanitizeDataset(raw);
         if (!clean) throw new Error("malformed schedule");
+        if (cancelled) return;
         writeCache(clean);
         dataRef.current = clean;
         setData(clean);
         setStatus("ready");
         setOffline(false);
-      })
-      .catch(() => {
+        setIsPlaceholder(true);
+      } catch {
         if (cancelled) return;
         if (!hydrated.current) {
           hydrated.current = true;
@@ -119,7 +146,10 @@ export function useSchedule(): ScheduleState {
         } else {
           setStatus("error");
         }
-      });
+      }
+    }
+
+    load();
 
     return () => {
       cancelled = true;
@@ -130,7 +160,7 @@ export function useSchedule(): ScheduleState {
     setAttempt((value) => value + 1);
   }, []);
 
-  return { data, status, offline, retry };
+  return { data, status, offline, isPlaceholder, retry };
 }
 
 /** When the cached copy was saved (for the "most recently loaded" note). */

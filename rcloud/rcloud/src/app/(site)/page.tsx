@@ -28,12 +28,14 @@ import {
   getProjects,
   getResources,
 } from "@/lib/server/queries";
+import { getSiteVisibility } from "@/lib/server/siteVisibility";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [resources, featured, officers, projects, summary, constituency, announcements] =
+  const [visibility, resources, featured, officers, projects, summary, constituency, announcements] =
     await Promise.all([
+      getSiteVisibility(),
       getResources(),
       getFeaturedResources(),
       getOfficers(),
@@ -84,16 +86,22 @@ export default async function HomePage() {
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link href="/resources" className={btnPrimary}>
-                Explore Resources
-                <IconArrowRight size={15} />
-              </Link>
-              <Link href="/transparency" className={btnGhost}>
-                View Transparency
-              </Link>
-              <Link href="/projects" className={btnGhost}>
-                Check Projects
-              </Link>
+              {visibility.showResources && (
+                <Link href="/resources" className={btnPrimary}>
+                  Explore Resources
+                  <IconArrowRight size={15} />
+                </Link>
+              )}
+              {visibility.showTransparency && (
+                <Link href="/transparency" className={btnGhost}>
+                  View Transparency
+                </Link>
+              )}
+              {visibility.showProjects && (
+                <Link href="/projects" className={btnGhost}>
+                  Check Projects
+                </Link>
+              )}
             </div>
 
             <dl className="mt-12 grid grid-cols-3 divide-x divide-line border-y border-line">
@@ -133,186 +141,200 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ---------------------------- Room finder --------------------------- */}
-      <section className="border-b border-vio-700/30 bg-abyss/60">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-          <Reveal>
-            <RoomFinderTeaser />
-          </Reveal>
-        </div>
-      </section>
-
       {/* ---------------------------- Announcements ------------------------- */}
-      <section className="border-b border-vio-700/30 bg-abyss/60">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <Reveal>
-            <SectionHeading
-              eyebrow="Announcements"
-              title="Latest from the council"
-              description="The three most recent advisories and updates, posted here first, right where they are easy to find."
-            />
-          </Reveal>
-          <AnnouncementsBoard announcements={announcements} />
-        </div>
-      </section>
+      {/* Swapped: Announcements now come BEFORE Roomivility per request */}
+      {visibility.showAnnouncements && (
+        <section className="border-b border-vio-700/30 bg-abyss/60">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+            <Reveal>
+              <SectionHeading
+                eyebrow="Announcements"
+                title="Latest from the council"
+                description="The three most recent advisories and updates, posted here first, right where they are easy to find."
+              />
+            </Reveal>
+            <AnnouncementsBoard announcements={announcements} />
+          </div>
+        </section>
+      )}
+
+      {/* ---------------------------- Room finder --------------------------- */}
+      {visibility.showRoomfinder && (
+        <section className="border-b border-vio-700/30 bg-abyss/60">
+          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+            <Reveal>
+              <RoomFinderTeaser />
+            </Reveal>
+          </div>
+        </section>
+      )}
 
       {/* --------------------------- Quick access --------------------------- */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <Reveal>
-          <SectionHeading
-            eyebrow="Quick access"
-            title="The resources students reach for most"
-            description="Everything below lives on the official rCloud repository — nothing removed, nothing hidden."
-            action={
-              <Link href="/resources" className={btnGhostSm}>
-                Browse all resources
-                <IconArrowRight size={15} />
-              </Link>
-            }
-          />
-        </Reveal>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((resource, index) => (
-            <Reveal key={resource.id} delay={index * 80}>
-              <ResourceCard resource={resource} />
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ----------------------- Transparency snapshot ---------------------- */}
-      <section className="border-y border-line bg-abyss/60">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+      {visibility.showResources && (
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <Reveal>
             <SectionHeading
-              eyebrow="Transparency snapshot"
-              title="Where the council fund stands"
-              description="A live-at-a-glance view of the council budget, computed from published project records."
+              eyebrow="Quick access"
+              title="The resources students reach for most"
+              description="Everything below lives on the official rCloud repository — nothing removed, nothing hidden."
               action={
-                <Link href="/transparency" className={btnGhostSm}>
-                  Full transparency page
+                <Link href="/resources" className={btnGhostSm}>
+                  Browse all resources
                   <IconArrowRight size={15} />
                 </Link>
               }
             />
           </Reveal>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["Total Budget", formatPeso(summary.totalBudget)],
-              ["Allocated", formatPeso(summary.allocated)],
-              ["Utilized", formatPeso(summary.utilized)],
-              ["Remaining", formatPeso(summary.remaining)],
-            ].map(([label, value], index) => (
-              <Reveal key={label} delay={index * 80}>
-                <StatCard label={label} value={value} hint={summary.period} />
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.map((resource, index) => (
+              <Reveal key={resource.id} delay={index * 80}>
+                <ResourceCard resource={resource} />
               </Reveal>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
+
+      {/* ----------------------- Transparency snapshot ---------------------- */}
+      {visibility.showTransparency && (
+        <section className="border-y border-line bg-abyss/60">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+            <Reveal>
+              <SectionHeading
+                eyebrow="Transparency snapshot"
+                title="Where the council fund stands"
+                description="A live-at-a-glance view of the council budget, computed from published project records."
+                action={
+                  <Link href="/transparency" className={btnGhostSm}>
+                    Full transparency page
+                    <IconArrowRight size={15} />
+                  </Link>
+                }
+              />
+            </Reveal>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["Total Budget", formatPeso(summary.totalBudget)],
+                ["Allocated", formatPeso(summary.allocated)],
+                ["Utilized", formatPeso(summary.utilized)],
+                ["Remaining", formatPeso(summary.remaining)],
+              ].map(([label, value], index) => (
+                <Reveal key={label} delay={index * 80}>
+                  <StatCard label={label} value={value} hint={summary.period} />
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* --------------------------- Current projects ----------------------- */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <Reveal>
-          <SectionHeading
-            eyebrow="Current projects"
-            title="What the council is working on"
-            description="Status and utilization per project — from approved resolutions to completed programs."
-            action={
-              <Link href="/projects" className={btnGhostSm}>
-                All projects
-                <IconArrowRight size={15} />
-              </Link>
-            }
-          />
-        </Reveal>
-        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {projects.slice(0, 3).map((project, index) => (
-            <Reveal key={project.id} delay={index * 80}>
-              <ProjectCard project={project} />
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* -------------------------- Constituency check ---------------------- */}
-      <section className="border-y border-line bg-abyss/60">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+      {visibility.showProjects && (
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <Reveal>
             <SectionHeading
-              eyebrow="Constituency check"
-              title="How CSSP students are doing"
-              description="A pulse check on the student body — flood impact, safety and connectivity."
+              eyebrow="Current projects"
+              title="What the council is working on"
+              description="Status and utilization per project — from approved resolutions to completed programs."
               action={
-                <Link href="/constituency" className={btnGhostSm}>
-                  Constituency dashboard
+                <Link href="/projects" className={btnGhostSm}>
+                  All projects
                   <IconArrowRight size={15} />
                 </Link>
               }
             />
           </Reveal>
-          {latestPeriod ? (
-            <>
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <Reveal>
-                  <StatCard label="Apektado ng Baha" value={formatNumber(latestPeriod.baha)} hint={latestPeriod.label} />
-                </Reveal>
-                <Reveal delay={80}>
-                  <StatCard label="Safe" value={formatNumber(latestPeriod.safe)} hint={latestPeriod.label} />
-                </Reveal>
-                <Reveal delay={160}>
-                  <StatCard label="Walang Internet / Mabagal ang Internet Connection" value={formatNumber(latestPeriod.internet)} hint={latestPeriod.label} />
-                </Reveal>
-              </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {projects.slice(0, 3).map((project, index) => (
+              <Reveal key={project.id} delay={index * 80}>
+                <ProjectCard project={project} />
+              </Reveal>
+            ))}
+          </div>
+        </section>
+      )}
 
-              {/* Student entry point: view the data and build a personal report */}
-              <Reveal delay={220}>
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                  <Link
-                    href="/constituency#student-report"
-                    className={btnPrimary}
-                  >
-                    See the data &amp; create my report
+      {/* -------------------------- Constituency check ---------------------- */}
+      {visibility.showConstituency && (
+        <section className="border-y border-line bg-abyss/60">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+            <Reveal>
+              <SectionHeading
+                eyebrow="Constituency check"
+                title="How CSSP students are doing"
+                description="A pulse check on the student body — flood impact, safety and connectivity."
+                action={
+                  <Link href="/constituency" className={btnGhostSm}>
+                    Constituency dashboard
                     <IconArrowRight size={15} />
                   </Link>
-                  <p className="text-xs leading-relaxed text-dim">
-                    Pick a date, add your name and section if you need them, and
-                    download the official CSSP LSC Constituency Check PDF.
-                  </p>
+                }
+              />
+            </Reveal>
+            {latestPeriod ? (
+              <>
+                <div className="mt-6 grid gap-4 md:grid-cols-3">
+                  <Reveal>
+                    <StatCard label="Apektado ng Baha" value={formatNumber(latestPeriod.baha)} hint={latestPeriod.label} />
+                  </Reveal>
+                  <Reveal delay={80}>
+                    <StatCard label="Safe" value={formatNumber(latestPeriod.safe)} hint={latestPeriod.label} />
+                  </Reveal>
+                  <Reveal delay={160}>
+                    <StatCard label="Walang Internet / Mabagal ang Internet Connection" value={formatNumber(latestPeriod.internet)} hint={latestPeriod.label} />
+                  </Reveal>
                 </div>
-              </Reveal>
-            </>
-          ) : (
-            <p className="mt-6 text-sm text-mist">
-              Constituency data is temporarily unavailable. Please check again later.
-            </p>
-          )}
-        </div>
-      </section>
+
+                <Reveal delay={220}>
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <Link
+                      href="/constituency#student-report"
+                      className={btnPrimary}
+                    >
+                      See the data &amp; create my report
+                      <IconArrowRight size={15} />
+                    </Link>
+                    <p className="text-xs leading-relaxed text-dim">
+                      Pick a date, add your name and section if you need them, and
+                      download the official CSSP LSC Constituency Check PDF.
+                    </p>
+                  </div>
+                </Reveal>
+              </>
+            ) : (
+              <p className="mt-6 text-sm text-mist">
+                Constituency data is temporarily unavailable. Please check again later.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ------------------------------ Officers ---------------------------- */}
-      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <Reveal>
-          <SectionHeading
-            eyebrow="The cabinet"
-            title={`Your council, AY ${site.term}`}
-            description="The elected officers serving the CSSP student body."
-            action={
-              <Link href="/officers" className={btnGhostSm}>
-                Meet the officers
-                <IconArrowRight size={15} />
-              </Link>
-            }
-          />
-        </Reveal>
-        <div className="mt-8 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-4">
-          {officers.map((officer, index) => (
-            <Reveal key={officer.id} delay={(index % 4) * 70}>
-              <OfficerCard officer={officer} />
-            </Reveal>
-          ))}
-        </div>
-      </section>
+      {visibility.showOfficers && (
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <Reveal>
+            <SectionHeading
+              eyebrow="The cabinet"
+              title={`Your council, AY ${site.term}`}
+              description="The elected officers serving the CSSP student body."
+              action={
+                <Link href="/officers" className={btnGhostSm}>
+                  Meet the officers
+                  <IconArrowRight size={15} />
+                </Link>
+              }
+            />
+          </Reveal>
+          <div className="mt-8 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-4">
+            {officers.map((officer, index) => (
+              <Reveal key={officer.id} delay={(index % 4) * 70}>
+                <OfficerCard officer={officer} />
+              </Reveal>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* --------------------- Organizations & socio-cultural ---------------- */}
       <section className="border-t border-line">
@@ -387,13 +409,17 @@ export default async function HomePage() {
                   {site.intro[1]}
                 </p>
                 <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                  <Link href="/resources" className={btnPrimary}>
-                    Explore Resources
-                    <IconArrowRight size={15} />
-                  </Link>
-                  <Link href="/about" className={btnGhost}>
-                    About rCloud
-                  </Link>
+                  {visibility.showResources && (
+                    <Link href="/resources" className={btnPrimary}>
+                      Explore Resources
+                      <IconArrowRight size={15} />
+                    </Link>
+                  )}
+                  {visibility.showAbout && (
+                    <Link href="/about" className={btnGhost}>
+                      About rCloud
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
