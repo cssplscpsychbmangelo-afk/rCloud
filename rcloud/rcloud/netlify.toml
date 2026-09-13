@@ -11,6 +11,13 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# Static schedule dataset for the CSSP Room Finder. Short max-age so admin
+# updates propagate quickly; stale-while-revalidate keeps repeat visits fast.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300, stale-while-revalidate=604800"
+
 # SPA-style fallbacks are handled by the Next.js plugin;
 # add redirects here only for legacy URLs, e.g.:
 # [[redirects]]

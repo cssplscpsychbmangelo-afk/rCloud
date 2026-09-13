@@ -1,0 +1,202 @@
+{
+  "meta": {
+    "updated": "2026-09-07",
+    "source": "CSSP Local Student Council — published class schedule",
+    "stale": false,
+    "term": "1st Semester, AY 2026–2027"
+  },
+  "entries": [
+    { "day": "Monday", "start": "08:00", "end": "09:30", "course": "PSY 101", "section": "BSP 1A", "room": "201" },
+    { "day": "Monday", "start": "09:30", "end": "11:00", "course": "PSY 102", "section": "BSP 1B", "room": "201" },
+    { "day": "Monday", "start": "13:00", "end": "14:30", "course": "SOC 1", "section": "BAPS 2A", "room": "201" },
+    { "day": "Monday", "start": "16:00", "end": "17:30", "course": "GEO 1", "section": "BSP 1A", "room": "201" },
+
+    { "day": "Monday", "start": "09:30", "end": "11:00", "course": "POL SC 1", "section": "BAPS 1A", "room": "202" },
+    { "day": "Monday", "start": "11:00", "end": "12:30", "course": "PHILO 1", "section": "BAPS 2A", "room": "202" },
+    { "day": "Monday", "start": "14:30", "end": "16:00", "course": "PSY 108", "section": "BSP 2A", "room": "202" },
+
+    { "day": "Monday", "start": "08:00", "end": "09:30", "course": "PSY 104", "section": "BSP 2B", "room": "203" },
+    { "day": "Monday", "start": "13:00", "end": "14:30", "course": "STAT 1", "section": "BSP 2A", "room": "203" },
+    { "day": "Monday", "start": "14:30", "end": "16:00", "course": "STAT 1", "section": "BSP 2B", "room": "203" },
+
+    { "day": "Monday", "start": "11:00", "end": "12:30", "course": "ANTHRO 1", "section": "BAS 2A", "room": "204" },
+    { "day": "Monday", "start": "13:00", "end": "16:00", "course": "PSY 201", "section": "BSP 3A", "room": "204" },
+
+    { "day": "Monday", "start": "08:00", "end": "09:30", "course": "SOC 1", "section": "BSP 1A", "room": "205" },
+    { "day": "Monday", "start": "11:00", "end": "12:30", "course": "PHILO 25", "section": "BSP 3C", "room": "205" },
+    { "day": "Monday", "start": "16:00", "end": "17:30", "course": "POL SC 11", "section": "BAPS 3A", "room": "205" },
+
+    { "day": "Monday", "start": "09:30", "end": "11:00", "course": "PSY 115", "section": "BSP 3C", "room": "301" },
+    { "day": "Monday", "start": "13:00", "end": "14:30", "course": "PSY 123", "section": "BSP 3A", "room": "301" },
+    { "day": "Monday", "start": "14:30", "end": "16:00", "course": "PSY 125", "section": "BSP 3B", "room": "301" },
+
+    { "day": "Monday", "start": "08:00", "end": "09:30", "course": "GEO 1", "section": "BSP 1B", "room": "302" },
+    { "day": "Monday", "start": "09:30", "end": "11:00", "course": "SOC 1", "section": "BAS 2A", "room": "302" },
+    { "day": "Monday", "start": "16:00", "end": "17:30", "course": "PHILO 1", "section": "BAS 1A", "room": "302" },
+
+    { "day": "Monday", "start": "11:00", "end": "12:30", "course": "PSY 101", "section": "BSP 1B", "room": "303" },
+    { "day": "Monday", "start": "13:00", "end": "14:30", "course": "POL SC 14", "section": "BAPS 2A", "room": "303" },
+    { "day": "Monday", "start": "14:30", "end": "16:00", "course": "SOC 7", "section": "BAPS 3A", "room": "303" },
+
+    { "day": "Monday", "start": "08:00", "end": "09:30", "course": "PHILO 1", "section": "BSP 2B", "room": "304" },
+    { "day": "Monday", "start": "09:30", "end": "11:00", "course": "STAT 1", "section": "BSP 3B", "room": "304" },
+    { "day": "Monday", "start": "11:00", "end": "12:30", "course": "PSY 108", "section": "BSP 3A", "room": "304" },
+
+    { "day": "Monday", "start": "13:00", "end": "14:30", "course": "ANTHRO 1", "section": "BAPS 1A", "room": "305" },
+    { "day": "Monday", "start": "16:00", "end": "17:30", "course": "GEO 1", "section": "BAS 2A", "room": "305" },
+
+    { "day": "Tuesday", "start": "08:00", "end": "09:30", "course": "PSY 115", "section": "BSP 3A", "room": "201" },
+    { "day": "Tuesday", "start": "09:30", "end": "11:00", "course": "PSY 123", "section": "BSP 3B", "room": "201" },
+    { "day": "Tuesday", "start": "13:00", "end": "14:30", "course": "PSY 125", "section": "BSP 3C", "room": "201" },
+
+    { "day": "Tuesday", "start": "11:00", "end": "12:30", "course": "SOC 7", "section": "BAPS 3A", "room": "202" },
+    { "day": "Tuesday", "start": "14:30", "end": "16:00", "course": "POL SC 1", "section": "BAPS 1B", "room": "202" },
+
+    { "day": "Tuesday", "start": "08:00", "end": "09:30", "course": "PSY 102", "section": "BSP 1A", "room": "203" },
+    { "day": "Tuesday", "start": "09:30", "end": "11:00", "course": "PSY 101", "section": "BSP 1A", "room": "203" },
+    { "day": "Tuesday", "start": "16:00", "end": "17:30", "course": "PHILO 25", "section": "BSP 3A", "room": "203" },
+
+    { "day": "Tuesday", "start": "10:30", "end": "12:00", "course": "PSY 104", "section": "BSP 2A", "room": "204" },
+    { "day": "Tuesday", "start": "13:00", "end": "16:00", "course": "PSY 210", "section": "BSP 4A", "room": "204" },
+
+    { "day": "Tuesday", "start": "09:30", "end": "11:00", "course": "ANTHRO 1", "section": "BSP 2A", "room": "205" },
+    { "day": "Tuesday", "start": "11:00", "end": "12:30", "course": "SOC 1", "section": "BSP 1B", "room": "205" },
+    { "day": "Tuesday", "start": "14:30", "end": "16:00", "course": "STAT 1", "section": "BSP 3A", "room": "205" },
+
+    { "day": "Tuesday", "start": "08:00", "end": "09:30", "course": "PSY 108", "section": "BSP 2B", "room": "301" },
+    { "day": "Tuesday", "start": "13:00", "end": "14:30", "course": "PSY 104", "section": "BSP 2B", "room": "301" },
+
+    { "day": "Tuesday", "start": "09:30", "end": "11:00", "course": "POL SC 14", "section": "BAPS 3A", "room": "302" },
+    { "day": "Tuesday", "start": "13:00", "end": "14:30", "course": "GEO 1", "section": "BAPS 1B", "room": "302" },
+    { "day": "Tuesday", "start": "14:30", "end": "16:00", "course": "PHILO 1", "section": "BAPS 1B", "room": "302" },
+
+    { "day": "Tuesday", "start": "08:00", "end": "09:30", "course": "STAT 1", "section": "BSP 2A", "room": "303" },
+    { "day": "Tuesday", "start": "11:00", "end": "12:30", "course": "PSY 125", "section": "BSP 3A", "room": "303" },
+    { "day": "Tuesday", "start": "16:00", "end": "17:30", "course": "SOC 1", "section": "BAPS 1A", "room": "303" },
+
+    { "day": "Tuesday", "start": "09:30", "end": "11:00", "course": "PHILO 1", "section": "BAS 2A", "room": "304" },
+    { "day": "Tuesday", "start": "13:00", "end": "14:30", "course": "PSY 115", "section": "BSP 3B", "room": "304" },
+    { "day": "Tuesday", "start": "14:30", "end": "16:00", "course": "PSY 101", "section": "BSP 1B", "room": "304" },
+
+    { "day": "Tuesday", "start": "11:00", "end": "12:30", "course": "PSY 123", "section": "BSP 3C", "room": "305" },
+    { "day": "Tuesday", "start": "13:00", "end": "14:30", "course": "STAT 1", "section": "BSP 3C", "room": "305" },
+
+    { "day": "Wednesday", "start": "08:00", "end": "09:30", "course": "PSY 102", "section": "BSP 1B", "room": "201" },
+    { "day": "Wednesday", "start": "09:30", "end": "11:00", "course": "PSY 101", "section": "BSP 1B", "room": "201" },
+    { "day": "Wednesday", "start": "13:00", "end": "14:30", "course": "PHILO 25", "section": "BSP 3B", "room": "201" },
+    { "day": "Wednesday", "start": "14:30", "end": "16:00", "course": "PSY 108", "section": "BSP 2A", "room": "201" },
+
+    { "day": "Wednesday", "start": "08:00", "end": "09:30", "course": "POL SC 11", "section": "BAPS 2A", "room": "202" },
+    { "day": "Wednesday", "start": "11:00", "end": "12:30", "course": "SOC 1", "section": "BAPS 1B", "room": "202" },
+    { "day": "Wednesday", "start": "13:00", "end": "14:30", "course": "GEO 1", "section": "BSP 1B", "room": "202" },
+
+    { "day": "Wednesday", "start": "09:30", "end": "11:00", "course": "PSY 104", "section": "BSP 2A", "room": "203" },
+    { "day": "Wednesday", "start": "11:00", "end": "12:30", "course": "STAT 1", "section": "BSP 2B", "room": "203" },
+    { "day": "Wednesday", "start": "14:30", "end": "16:00", "course": "PSY 115", "section": "BSP 3C", "room": "203" },
+
+    { "day": "Wednesday", "start": "08:00", "end": "11:00", "course": "PSY 201", "section": "BSP 3B", "room": "204" },
+    { "day": "Wednesday", "start": "13:00", "end": "14:30", "course": "ANTHRO 1", "section": "BSP 2B", "room": "204" },
+
+    { "day": "Wednesday", "start": "09:30", "end": "11:00", "course": "PHILO 1", "section": "BAPS 1A", "room": "205" },
+    { "day": "Wednesday", "start": "13:00", "end": "14:30", "course": "SOC 7", "section": "BAPS 2A", "room": "205" },
+    { "day": "Wednesday", "start": "16:00", "end": "17:30", "course": "POL SC 1", "section": "BAPS 2A", "room": "205" },
+
+    { "day": "Wednesday", "start": "08:00", "end": "09:30", "course": "PSY 125", "section": "BSP 3B", "room": "301" },
+    { "day": "Wednesday", "start": "11:00", "end": "12:30", "course": "PSY 123", "section": "BSP 3A", "room": "301" },
+    { "day": "Wednesday", "start": "14:30", "end": "16:00", "course": "PSY 210", "section": "BSP 4A", "room": "301" },
+
+    { "day": "Wednesday", "start": "09:30", "end": "11:00", "course": "GEO 1", "section": "BAPS 1A", "room": "302" },
+    { "day": "Wednesday", "start": "13:00", "end": "14:30", "course": "PHILO 1", "section": "BAS 1A", "room": "302" },
+    { "day": "Wednesday", "start": "14:30", "end": "16:00", "course": "SOC 1", "section": "BAS 2A", "room": "302" },
+
+    { "day": "Wednesday", "start": "08:00", "end": "09:30", "course": "PSY 115", "section": "BSP 3A", "room": "303" },
+    { "day": "Wednesday", "start": "11:00", "end": "12:30", "course": "PSY 104", "section": "BSP 2B", "room": "303" },
+    { "day": "Wednesday", "start": "13:00", "end": "14:30", "course": "PSY 101", "section": "BSP 1A", "room": "303" },
+
+    { "day": "Wednesday", "start": "09:30", "end": "11:00", "course": "PSY 108", "section": "BSP 3A", "room": "304" },
+    { "day": "Wednesday", "start": "11:00", "end": "12:30", "course": "STAT 1", "section": "BSP 3A", "room": "304" },
+    { "day": "Wednesday", "start": "14:30", "end": "16:00", "course": "PHILO 25", "section": "BSP 3C", "room": "304" },
+
+    { "day": "Wednesday", "start": "10:30", "end": "12:00", "course": "POL SC 14", "section": "BAPS 1A", "room": "305" },
+    { "day": "Wednesday", "start": "13:00", "end": "16:00", "course": "PSY 201", "section": "BSP 3C", "room": "305" },
+
+    { "day": "Thursday", "start": "08:00", "end": "09:30", "course": "PSY 123", "section": "BSP 3C", "room": "201" },
+    { "day": "Thursday", "start": "09:30", "end": "11:00", "course": "PSY 125", "section": "BSP 3A", "room": "201" },
+    { "day": "Thursday", "start": "13:00", "end": "14:30", "course": "PSY 115", "section": "BSP 3B", "room": "201" },
+
+    { "day": "Thursday", "start": "09:30", "end": "11:00", "course": "POL SC 1", "section": "BAPS 2A", "room": "202" },
+    { "day": "Thursday", "start": "14:30", "end": "16:00", "course": "SOC 7", "section": "BAPS 2A", "room": "202" },
+
+    { "day": "Thursday", "start": "08:00", "end": "09:30", "course": "PSY 101", "section": "BSP 1A", "room": "203" },
+    { "day": "Thursday", "start": "11:00", "end": "12:30", "course": "PSY 102", "section": "BSP 1A", "room": "203" },
+    { "day": "Thursday", "start": "13:00", "end": "14:30", "course": "PSY 104", "section": "BSP 2B", "room": "203" },
+
+    { "day": "Thursday", "start": "10:30", "end": "12:00", "course": "STAT 1", "section": "BSP 3B", "room": "204" },
+    { "day": "Thursday", "start": "13:00", "end": "16:00", "course": "PSY 201", "section": "BSP 4A", "room": "204" },
+
+    { "day": "Thursday", "start": "08:00", "end": "09:30", "course": "SOC 1", "section": "BSP 1A", "room": "205" },
+    { "day": "Thursday", "start": "09:30", "end": "11:00", "course": "ANTHRO 1", "section": "BAPS 1B", "room": "205" },
+    { "day": "Thursday", "start": "16:00", "end": "17:30", "course": "PHILO 25", "section": "BSP 3A", "room": "205" },
+
+    { "day": "Thursday", "start": "08:00", "end": "09:30", "course": "PSY 108", "section": "BSP 2A", "room": "301" },
+    { "day": "Thursday", "start": "09:30", "end": "11:00", "course": "PSY 115", "section": "BSP 3C", "room": "301" },
+    { "day": "Thursday", "start": "14:30", "end": "16:00", "course": "PSY 123", "section": "BSP 3B", "room": "301" },
+
+    { "day": "Thursday", "start": "11:00", "end": "12:30", "course": "GEO 1", "section": "BAS 2A", "room": "302" },
+    { "day": "Thursday", "start": "13:00", "end": "14:30", "course": "PHILO 1", "section": "BAPS 2A", "room": "302" },
+    { "day": "Thursday", "start": "14:30", "end": "16:00", "course": "POL SC 11", "section": "BAPS 1A", "room": "302" },
+
+    { "day": "Thursday", "start": "08:00", "end": "09:30", "course": "STAT 1", "section": "BSP 2B", "room": "303" },
+    { "day": "Thursday", "start": "09:30", "end": "11:00", "course": "PSY 125", "section": "BSP 3C", "room": "303" },
+    { "day": "Thursday", "start": "13:00", "end": "14:30", "course": "SOC 1", "section": "BAS 1A", "room": "303" },
+
+    { "day": "Thursday", "start": "11:00", "end": "12:30", "course": "PSY 101", "section": "BSP 1B", "room": "304" },
+    { "day": "Thursday", "start": "13:00", "end": "14:30", "course": "PSY 102", "section": "BSP 1B", "room": "304" },
+    { "day": "Thursday", "start": "14:30", "end": "16:00", "course": "PSY 108", "section": "BSP 2B", "room": "304" },
+
+    { "day": "Thursday", "start": "09:30", "end": "11:00", "course": "PHILO 1", "section": "BSP 2A", "room": "305" },
+    { "day": "Thursday", "start": "11:00", "end": "12:30", "course": "PSY 104", "section": "BSP 2A", "room": "305" },
+
+    { "day": "Friday", "start": "08:00", "end": "09:30", "course": "PSY 104", "section": "BSP 2A", "room": "201" },
+    { "day": "Friday", "start": "09:30", "end": "11:00", "course": "PSY 115", "section": "BSP 3A", "room": "201" },
+    { "day": "Friday", "start": "13:00", "end": "14:30", "course": "GEO 1", "section": "BSP 1A", "room": "201" },
+
+    { "day": "Friday", "start": "08:00", "end": "09:30", "course": "PHILO 1", "section": "BAPS 1B", "room": "202" },
+    { "day": "Friday", "start": "09:30", "end": "11:00", "course": "POL SC 14", "section": "BAPS 1B", "room": "202" },
+    { "day": "Friday", "start": "11:00", "end": "12:30", "course": "SOC 1", "section": "BAPS 2A", "room": "202" },
+
+    { "day": "Friday", "start": "10:30", "end": "12:00", "course": "PSY 108", "section": "BSP 3B", "room": "203" },
+    { "day": "Friday", "start": "13:00", "end": "16:00", "course": "PSY 210", "section": "BSP 4A", "room": "203" },
+
+    { "day": "Friday", "start": "08:00", "end": "09:30", "course": "STAT 1", "section": "BSP 3C", "room": "204" },
+    { "day": "Friday", "start": "09:30", "end": "11:00", "course": "ANTHRO 1", "section": "BAS 2A", "room": "204" },
+    { "day": "Friday", "start": "13:00", "end": "14:30", "course": "PSY 125", "section": "BSP 3C", "room": "204" },
+
+    { "day": "Friday", "start": "09:30", "end": "11:00", "course": "PSY 101", "section": "BSP 1A", "room": "205" },
+    { "day": "Friday", "start": "11:00", "end": "12:30", "course": "PSY 102", "section": "BSP 1B", "room": "205" },
+    { "day": "Friday", "start": "14:30", "end": "16:00", "course": "PHILO 25", "section": "BSP 3B", "room": "205" },
+
+    { "day": "Friday", "start": "08:00", "end": "09:30", "course": "PSY 123", "section": "BSP 3B", "room": "301" },
+    { "day": "Friday", "start": "09:30", "end": "11:00", "course": "PSY 125", "section": "BSP 3B", "room": "301" },
+    { "day": "Friday", "start": "13:00", "end": "14:30", "course": "SOC 7", "section": "BAPS 3A", "room": "301" },
+
+    { "day": "Friday", "start": "09:30", "end": "11:00", "course": "PSY 104", "section": "BSP 2B", "room": "302" },
+    { "day": "Friday", "start": "13:00", "end": "14:30", "course": "POL SC 1", "section": "BAPS 1A", "room": "302" },
+    { "day": "Friday", "start": "14:30", "end": "16:00", "course": "PHILO 1", "section": "BAS 2A", "room": "302" },
+
+    { "day": "Friday", "start": "08:00", "end": "09:30", "course": "PSY 115", "section": "BSP 3B", "room": "303" },
+    { "day": "Friday", "start": "09:30", "end": "11:00", "course": "PSY 123", "section": "BSP 3A", "room": "303" },
+    { "day": "Friday", "start": "11:00", "end": "12:30", "course": "STAT 1", "section": "BSP 2A", "room": "303" },
+
+    { "day": "Friday", "start": "10:30", "end": "12:00", "course": "PSY 108", "section": "BSP 3A", "room": "304" },
+    { "day": "Friday", "start": "13:00", "end": "14:30", "course": "SOC 1", "section": "BSP 1A", "room": "304" },
+    { "day": "Friday", "start": "14:30", "end": "16:00", "course": "GEO 1", "section": "BAPS 1A", "room": "304" },
+
+    { "day": "Friday", "start": "08:00", "end": "11:00", "course": "PSY 201", "section": "BSP 3A", "room": "305" },
+
+    { "day": "Saturday", "start": "08:00", "end": "11:00", "course": "PSY 210", "section": "BSP 4A", "room": "301" },
+    { "day": "Saturday", "start": "09:00", "end": "12:00", "course": "PSY 201", "section": "BSP 3C", "room": "302" },
+    { "day": "Saturday", "start": "09:00", "end": "12:00", "course": "STAT 1", "section": "BSP 4A", "room": "303" },
+    { "day": "Saturday", "start": "13:00", "end": "16:00", "course": "POL SC 11", "section": "BAPS 3A", "room": "304" }
+  ]
+}

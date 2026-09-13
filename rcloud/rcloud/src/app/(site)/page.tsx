@@ -10,6 +10,7 @@ import {
 } from "@/components/Cards";
 import { IconArrowRight, IconCoins, IconExternal } from "@/components/Icons";
 import AnnouncementsBoard from "@/components/AnnouncementsBoard";
+import RoomFinderTeaser from "@/components/roomfinder/RoomFinderTeaser";
 import { site } from "@/lib/data/site";
 import {
   organizations,
@@ -128,6 +129,15 @@ export default async function HomePage() {
                 </div>
               </div>
             </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ---------------------------- Room finder --------------------------- */}
+      <section className="border-b border-vio-700/30 bg-abyss/60">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+          <Reveal>
+            <RoomFinderTeaser />
           </Reveal>
         </div>
       </section>

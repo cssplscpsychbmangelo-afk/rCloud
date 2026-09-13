@@ -26,9 +26,9 @@ export default function Footer() {
           <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-dim">
             Explore
           </h2>
-          <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2.5">
+          <ul className="mt-4 flex max-w-xs flex-wrap gap-x-6 gap-y-2.5">
             {navLinks.slice(1).map((link) => (
-              <li key={link.href}>
+              <li key={link.href} className="leading-6">
                 <Link
                   href={link.href}
                   className="text-sm text-mist transition-colors duration-200 hover:text-vio-300"

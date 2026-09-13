@@ -198,33 +198,27 @@ export async function toggleOfficer(form: FormData): Promise<void> {
 
 /* ---------------------------- content: projects ---------------------------- */
 
+/**
+ * Adds or edits a project. The form only collects what matters — name,
+ * description, status and an optional external photo link — so no file upload
+ * is handled here. Fields the form no longer collects (category, date, lead,
+ * document links, transparency notes) keep their stored values when editing.
+ */
 export async function saveProjectDetails(form: FormData): Promise<void> {
   await requirePermission("content");
   await ensureSchema();
   const session = await requireSession();
   const id = str(form, "id");
-  let imageUrl = str(form, "imageUrl") || null;
-  try {
-    const uploaded = await imageData(form, "image");
-    if (uploaded) imageUrl = uploaded;
-  } catch (error) {
-    redirect(`/admin/projects?error=${encodeURIComponent((error as Error).message)}`);
-  }
-  const dateRaw = str(form, "date");
-  const isHeadAdmin = session.role === "head_admin";
+  const name = str(form, "name");
+  if (!name) redirect("/admin/projects?error=missing");
+
   const values = {
-    name: str(form, "name"),
+    name,
     description: str(form, "description"),
-    category: str(form, "category") || "Program",
     status: str(form, "status") || "Pending",
-    date: dateRaw ? new Date(dateRaw) : null,
-    projectLead: str(form, "projectLead") || null,
-    imageUrl,
-    documentLinks: str(form, "documentLinks"),
-    transparencyNotes: str(form, "transparencyNotes"),
+    imageUrl: str(form, "imageUrl") || null,
     updatedAt: new Date(),
   };
-  if (!values.name) redirect("/admin/projects?error=missing");
 
   if (id) {
     // Editing keeps the project's current review state — publishing is a
@@ -232,9 +226,12 @@ export async function saveProjectDetails(form: FormData): Promise<void> {
     await db.update(projects).set(values).where(eq(projects.id, id));
   } else {
     // New projects: Head Admin publishes immediately; Board Members submit a
-    // request that waits for Head-Admin approval.
+    // request that waits for Head-Admin approval. The date defaults to today so
+    // the project lands in the current month on the public Projects board.
+    const isHeadAdmin = session.role === "head_admin";
     await db.insert(projects).values({
       ...values,
+      date: new Date(),
       published: isHeadAdmin,
       approvalStatus: isHeadAdmin ? "approved" : "pending",
     });

@@ -47,13 +47,25 @@ export default async function AdminProjectsPage({
   const rows = await db.select().from(projects).orderBy(desc(projects.createdAt));
   const editing = rows.find((p) => p.id === params?.edit) ?? null;
 
+  // Budget balances for the project being added/edited — a brand-new project
+  // starts at ₱0 / ₱0 / ₱0 and is funded later from the Budget section.
+  const approved = editing?.approvedBudget ?? 0;
+  const utilized = editing?.actualExpenditure ?? 0;
+  const remaining = approved - utilized;
+  const overBudget = remaining < 0;
+  const balances = [
+    { label: "Approved", value: formatPeso(approved), warn: false },
+    { label: "Utilized", value: formatPeso(utilized), warn: false },
+    { label: "Remaining", value: formatPeso(remaining), warn: overBudget },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Projects"
-        description="Board Members submit projects for approval; Head Admins Approve or Reject in one click. Finance figures are restricted to Head Admins. Remaining is computed automatically."
+        description="Add a project with its name, description and status — nothing else is required. Board Members submit projects for approval; Head Admins Approve or Reject in one click. Budget figures stay in the Budget section."
       />
-      {params?.error && <Warn>Missing required fields or an invalid upload.</Warn>}
+      {params?.error && <Warn>Add a project name before saving.</Warn>}
       <Warn>
         Approve requests only for projects that were coordinated with the
         council beforehand. Unplanned or uncoordinated submissions should be
@@ -62,59 +74,96 @@ export default async function AdminProjectsPage({
 
       <Card>
         <h2 className="font-display text-base font-bold text-snow">
-          {editing ? `Edit: ${editing.name}` : "Create project"}
+          {editing ? `Edit: ${editing.name}` : "Add project"}
         </h2>
-        <form action={saveProjectDetails} className="mt-4 grid gap-4 sm:grid-cols-2">
+        <p className="mt-1.5 text-xs leading-relaxed text-mist">
+          {editing
+            ? "Only the name, description, status and photo link are editable."
+            : "Project name and description are all you need — the photo link is optional."}
+        </p>
+        <form action={saveProjectDetails} className="mt-4 grid gap-4">
           <input type="hidden" name="id" value={editing?.id ?? ""} />
           <Field label="Project name">
-            <input name="name" required defaultValue={editing?.name ?? ""} className={inputCls} />
-          </Field>
-          <Field label="Category">
-            <input name="category" defaultValue={editing?.category ?? ""} placeholder="Program / Event / Assistance" className={inputCls} />
-          </Field>
-          <Field label="Description" className="sm:col-span-2">
-            <textarea name="description" rows={2} defaultValue={editing?.description ?? ""} className={textareaCls} />
-          </Field>
-          <Field label="Status">
-            <select name="status" defaultValue={editing?.status ?? "Pending"} className={inputCls}>
-              {STATUSES.map((status) => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Date">
             <input
-              name="date"
-              type="date"
-              defaultValue={editing?.date ? editing.date.toISOString().slice(0, 10) : ""}
+              name="name"
+              required
+              defaultValue={editing?.name ?? ""}
+              placeholder="e.g. Baha Relief Drive"
               className={inputCls}
             />
           </Field>
-          <Field label="Project lead">
-            <input name="projectLead" defaultValue={editing?.projectLead ?? ""} className={inputCls} />
+          <Field label="Description">
+            <textarea
+              name="description"
+              rows={3}
+              defaultValue={editing?.description ?? ""}
+              placeholder="What the project is for and who it serves."
+              className={textareaCls}
+            />
           </Field>
-          <Field label="Image upload or paste URL below">
-            <input type="file" name="image" accept="image/png,image/jpeg,image/webp" className="block w-full text-xs text-mist file:me-3 file:rounded-lg file:border-0 file:bg-vio-950 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-vio-200" />
-          </Field>
-          <Field label="Image URL (external link)" className="sm:col-span-2">
-            <input name="imageUrl" defaultValue={editing?.imageUrl ?? ""} placeholder="https://… (Drive, FB album, etc.)" className={inputCls} />
-          </Field>
-          <Field label="Document links (one per line — Drive links welcome)" className="sm:col-span-2">
-            <textarea name="documentLinks" rows={2} defaultValue={editing?.documentLinks ?? ""} className={textareaCls} />
-          </Field>
-          <Field label="Transparency notes" className="sm:col-span-2">
-            <textarea name="transparencyNotes" rows={2} defaultValue={editing?.transparencyNotes ?? ""} className={textareaCls} />
-          </Field>
-          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-            <button type="submit" className={btnAdmin}>
-              {editing ? "Save details" : isHeadAdmin ? "Create project" : "Submit project for approval"}
-            </button>
-            {editing && <a href="/admin/projects" className={btnGhostAdmin}>Close</a>}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Status">
+              <select
+                name="status"
+                defaultValue={editing?.status ?? "Pending"}
+                className={inputCls}
+              >
+                {STATUSES.map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Photo link (optional)">
+              <input
+                name="imageUrl"
+                type="url"
+                defaultValue={editing?.imageUrl ?? ""}
+                placeholder="https://… (Drive, FB album, etc.)"
+                className={inputCls}
+              />
+            </Field>
           </div>
-          <p className="text-xs leading-relaxed text-dim sm:col-span-2">
+
+          {/* ------------------------- budget balances ------------------------- */}
+          <div className="rounded-xl border border-line bg-night/40 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-dim">
+              Budget balance
+            </p>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+              {balances.map(({ label, value, warn }) => (
+                <div
+                  key={label}
+                  className="rounded-xl border border-line bg-panel-2 px-4 py-3 text-center"
+                >
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-dim">
+                    {label}
+                  </dt>
+                  <dd
+                    className={`tnum mt-1.5 font-display text-xl font-extrabold tracking-tight ${
+                      warn ? "text-warn" : "text-snow"
+                    }`}
+                  >
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-3 text-xs leading-relaxed text-mist">
+              {editing
+                ? "Update the approved budget and expenditure below (Head Admin) or in the Budget section — remaining is computed automatically."
+                : "New projects start at ₱0. Set the approved budget and expenditure in the Budget section once the project is added."}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="submit" className={btnAdmin}>
+              {editing ? "Save project" : isHeadAdmin ? "Add project" : "Submit project for approval"}
+            </button>
+          </div>
+          <p className="text-xs leading-relaxed text-dim">
             New submissions from Board Members are marked{" "}
-            <span className="font-semibold text-warn">pending review</span> until a
-            Head Admin approves them — no need to edit before publishing.
+            <span className="font-semibold text-warn">pending review</span> until
+            a Head Admin approves them — no need to edit before publishing.
           </p>
         </form>
       </Card>
@@ -122,7 +171,7 @@ export default async function AdminProjectsPage({
       {editing && (
         <Card>
           <h2 className="font-display text-base font-bold text-snow">
-            Finance — {editing.name}
+            Budget — {editing.name}
           </h2>
           {canFinance ? (
             <form action={saveProjectFinance} className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -134,7 +183,7 @@ export default async function AdminProjectsPage({
                 <input name="actualExpenditure" type="number" min={0} required defaultValue={editing.actualExpenditure} className={inputCls} />
               </Field>
               <div className="flex items-end">
-                <button type="submit" className={btnAdmin}>Save finance</button>
+                <button type="submit" className={btnAdmin}>Save budget</button>
               </div>
             </form>
           ) : (
@@ -142,23 +191,12 @@ export default async function AdminProjectsPage({
               Budget and expenditure editing requires Head Admin (Finance) access.
             </p>
           )}
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <p className="tnum rounded-xl border border-line bg-night/60 px-4 py-3 text-sm text-mist">
-              Approved: <span className="font-bold text-snow">{formatPeso(editing.approvedBudget)}</span>
-            </p>
-            <p className="tnum rounded-xl border border-line bg-night/60 px-4 py-3 text-sm text-mist">
-              Utilized: <span className="font-bold text-snow">{formatPeso(editing.actualExpenditure)}</span>
-            </p>
-            <p className="tnum rounded-xl border border-line bg-night/60 px-4 py-3 text-sm text-mist">
-              Remaining: <span className="font-bold text-snow">{formatPeso(editing.approvedBudget - editing.actualExpenditure)}</span>
-            </p>
-          </div>
-          {editing.actualExpenditure > editing.approvedBudget && (
+          {overBudget && (
             <div className="mt-4">
               <Warn>
                 Expenditure exceeds the approved budget by{" "}
-                {formatPeso(editing.actualExpenditure - editing.approvedBudget)}.
-                Review and liquidate before publishing further updates.
+                {formatPeso(-remaining)}. Review and liquidate before publishing
+                further updates.
               </Warn>
             </div>
           )}
