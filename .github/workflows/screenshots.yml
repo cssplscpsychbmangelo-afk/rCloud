@@ -1,0 +1,71 @@
+name: site-screenshots
+
+# Captures a full-page PNG preview of every page of the deployed rCloud site
+# and commits them to `screenshots/` on the branch that triggered the run.
+# Re-run manually with the "Run workflow" button to refresh the previews.
+
+on:
+  push:
+    paths:
+      - ".github/workflows/screenshots.yml"
+      - "rcloud/rcloud/scripts/screenshot-site.mjs"
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Site URL to capture"
+        required: false
+        default: "https://rcloudcssp.netlify.app"
+
+concurrency:
+  group: site-screenshots
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SITE_URL: ${{ inputs.url || 'https://rcloudcssp.netlify.app' }}
+      # Documented development admin account (see README) — used only to let the
+      # capture walk the admin area. Set repo secrets to override.
+      ADMIN_EMAIL: ${{ secrets.SCREENSHOT_ADMIN_EMAIL || 'headadmin@rcloud.cssp' }}
+      ADMIN_PASSWORD: ${{ secrets.SCREENSHOT_ADMIN_PASSWORD || 'rcloud2026' }}
+    defaults:
+      run:
+        working-directory: rcloud/rcloud
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Playwright + Chromium
+        run: |
+          npm pkg delete dependencies.playwright 2>/dev/null || true
+          npm i -D playwright@1.63.0 --no-audit --no-fund --no-save
+          npx playwright install --with-deps chromium
+
+      - name: Capture screenshots
+        run: node scripts/screenshot-site.mjs --device=all --out=../../screenshots
+
+      - name: Commit screenshots
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A screenshots
+          git commit -m "chore(screenshots): refresh site previews [skip ci]" || echo "no changes to commit"
+          git push
+
+      - name: Upload screenshots artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcloud-screenshots
+          path: screenshots
+          if-no-files-found: warn
+          retention-days: 14
