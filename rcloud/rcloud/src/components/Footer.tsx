@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { contacts, navLinks, site } from "@/lib/data/site";
+import { SITE_HOST, SITE_URL_IS_LOCAL } from "@/lib/security/siteUrl";
 import { IconExternal, IconFacebook, IconMail, IconPhone } from "./Icons";
 
 const contactIcons = {
@@ -77,6 +78,25 @@ export default function Footer() {
       <div className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-5 text-xs text-dim sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>{site.footerMark}</p>
+          {/*
+            Copycat notice — the one anti-clone measure that does not depend on
+            a browser: it tells a student looking at a fake page which address
+            the real portal is published from. Shown only once the site knows
+            its own public URL (NEXT_PUBLIC_SITE_URL), never on localhost.
+          */}
+          {SITE_HOST && !SITE_URL_IS_LOCAL && (
+            <p className="sm:text-right">
+              Official site:{" "}
+              <span className="font-semibold text-mist">{SITE_HOST}</span> ·
+              rCloud is not published anywhere else —{" "}
+              <a
+                href={`mailto:${contacts.find((c) => c.icon === "mail")?.value ?? ""}`}
+                className="underline decoration-dotted underline-offset-2 hover:text-vio-300"
+              >
+                report a copy
+              </a>
+            </p>
+          )}
         </div>
       </div>
     </footer>

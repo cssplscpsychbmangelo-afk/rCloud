@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/server/auth";
@@ -6,6 +7,11 @@ import { visibleAdminNav } from "@/lib/adminNav";
 import { logoutAction } from "@/lib/server/actions";
 
 export const dynamic = "force-dynamic";
+
+/** The panel is reachable by URL only — keep it out of every search index. */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false, nocache: true },
+};
 
 /**
  * Admin shell — no public-site navigation or footer here. The only links in

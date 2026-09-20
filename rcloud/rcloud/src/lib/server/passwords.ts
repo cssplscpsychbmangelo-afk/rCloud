@@ -19,3 +19,16 @@ export function verifyPassword(password: string, stored: string): boolean {
     return false;
   }
 }
+
+/**
+ * A hash of a random value nobody knows.
+ *
+ * Sign-in verifies *something* against scrypt even when the email is not
+ * registered, so response time cannot be used to find out which addresses have
+ * admin accounts. Computed once per instance on first use.
+ */
+let decoy: string | null = null;
+export function decoyPasswordHash(): string {
+  if (!decoy) decoy = hashPassword(randomBytes(32).toString("hex"));
+  return decoy;
+}

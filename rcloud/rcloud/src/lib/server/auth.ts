@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import { appendFileSync } from "node:fs";
 import { cookies } from "next/headers";
-import { eq } from "drizzle-orm";
+import { eq, lt } from "drizzle-orm";
 import { db } from "./db";
 import { sessions, users } from "./schema";
 import { roleHasPermission, type Permission } from "./permissions";
@@ -12,21 +11,19 @@ export { hashPassword, verifyPassword };
 const COOKIE = "rcloud_session";
 const SESSION_DAYS = 7;
 
-/* ------------------------- diagnostics (temporary) ------------------------ */
-
-const DEBUG_LOG = "/home/user/rcloud/auth-debug.log";
-function alog(msg: string): void {
-  const line = `${new Date().toISOString()} ${msg}`;
-  try {
-    appendFileSync(DEBUG_LOG, line + "\n");
-  } catch {
-    /* read-only filesystems (Netlify) are fine — see console below */
-  }
-  try {
-    console.info(`[auth] ${line}`);
-  } catch {
-    /* never break a request */
-  }
+/**
+ * Diagnostics.
+ *
+ * Sign-in used to write a debug log to a hard-coded local path and print the
+ * first characters of every session token. That is exactly the kind of detail
+ * that must never end up in a log file that ships with the site, so it is now
+ * off by default and can only be turned on deliberately with
+ * `RCLOUD_AUTH_DEBUG=1` (local troubleshooting only). Tokens, password hashes
+ * and emails are never written, even then.
+ */
+function authDebug(message: string): void {
+  if (process.env.RCLOUD_AUTH_DEBUG !== "1") return;
+  console.info(`[auth] ${new Date().toISOString()} ${message}`);
 }
 
 /* -------------------------------- sessions -------------------------------- */
@@ -38,34 +35,64 @@ export type SessionUser = {
   role: string;
 };
 
+/**
+ * Session cookie attributes.
+ *
+ * Production: `HttpOnly` (no script can read it), `Secure` (HTTPS only),
+ * `SameSite=Lax` (the browser refuses to attach it to cross-site POSTs, which
+ * is what makes CSRF against the admin area ineffective) and a path of `/`.
+ *
+ * Development: the Arena live preview renders the app inside a cross-site
+ * iframe, so a `Lax` cookie would simply not be sent there. The relaxed
+ * `SameSite=None; Partitioned` variant is therefore kept for `next dev` only —
+ * it never applies to the deployed council site.
+ */
+function sessionCookieOptions(maxAge: number) {
+  const dev = process.env.NODE_ENV !== "production";
+  return dev
+    ? {
+        httpOnly: true,
+        sameSite: "none" as const,
+        secure: true,
+        partitioned: true,
+        path: "/",
+        maxAge,
+      }
+    : {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        secure: true,
+        path: "/",
+        maxAge,
+      };
+}
+
 export async function createSession(userId: string): Promise<void> {
   const token = randomBytes(24).toString("hex");
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 3600 * 1000);
 
   await db.insert(sessions).values({ userId, tokenHash, expiresAt });
-  alog(`createSession: user=${userId} token=${token.slice(0, 8)}…`);
+
+  // Housekeeping: drop rows that can no longer be used. Best-effort only —
+  // a failure here must never stop a legitimate sign-in.
+  try {
+    await db.delete(sessions).where(lt(sessions.expiresAt, new Date()));
+  } catch {
+    /* ignore */
+  }
+
+  authDebug(`createSession: user=${userId} (token never logged)`);
 
   const store = await cookies();
-  store.set(COOKIE, token, {
-    httpOnly: true,
-    sameSite: "none",
-    secure: true,
-    partitioned: true,
-    path: "/",
-    maxAge: SESSION_DAYS * 24 * 3600,
-  });
+  store.set(COOKIE, token, sessionCookieOptions(SESSION_DAYS * 24 * 3600));
 }
 
 export async function getSession(): Promise<SessionUser | null> {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
-  if (!token) {
-    alog("getSession: NO COOKIE sent with request");
-    return null;
-  }
+  if (!token) return null;
 
-  const fp = token.slice(0, 8);
   const tokenHash = createHash("sha256").update(token).digest("hex");
 
   let row:
@@ -86,17 +113,17 @@ export async function getSession(): Promise<SessionUser | null> {
         .where(eq(sessions.tokenHash, tokenHash));
       break;
     } catch (err) {
-      alog(`getSession: db error (attempt ${attempt}): ${(err as Error).message}`);
+      authDebug(`getSession: db error (attempt ${attempt}): ${(err as Error).message}`);
       if (attempt === 2) throw err;
     }
   }
 
   if (!row) {
-    alog(`getSession: token ${fp}… NOT IN DB`);
+    authDebug("getSession: unknown token — session not found");
     return null;
   }
   if (row.expiresAt.getTime() <= Date.now()) {
-    alog(`getSession: token ${fp}… EXPIRED at ${row.expiresAt.toISOString()}`);
+    authDebug(`getSession: expired session for user=${row.userId}`);
     return null;
   }
   return { id: row.userId, name: row.name, email: row.email, role: row.role };
@@ -105,12 +132,12 @@ export async function getSession(): Promise<SessionUser | null> {
 export async function destroySession(): Promise<void> {
   const store = await cookies();
   const token = store.get(COOKIE)?.value;
-  alog(`destroySession: token=${token ? `${token.slice(0, 8)}…` : "none"}`);
   if (token) {
     const tokenHash = createHash("sha256").update(token).digest("hex");
     await db.delete(sessions).where(eq(sessions.tokenHash, tokenHash));
   }
-  store.set(COOKIE, "", { httpOnly: true, sameSite: "none", secure: true, partitioned: true, path: "/", maxAge: 0 });
+  // Same attributes as when it was set, otherwise browsers keep the old value.
+  store.set(COOKIE, "", sessionCookieOptions(0));
 }
 
 /* ------------------------------ authorization ----------------------------- */

@@ -13,6 +13,9 @@
 *.pem
 
 # debug
+# (auth diagnostics are written to stdout only when RCLOUD_AUTH_DEBUG=1;
+#  never commit log files — they may contain sign-in metadata)
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

@@ -6,6 +6,8 @@ import { site } from "@/lib/data/site";
 export const metadata: Metadata = {
   title: "Admin sign in",
   description: "Restricted — rCloud administrative access.",
+  // Search engines have no business listing the way into the admin area.
+  robots: { index: false, follow: false },
 };
 
 export default async function LoginPage({
@@ -14,6 +16,15 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const params = await searchParams;
+
+  // One generic message for every failed sign-in (never "that email exists but
+  // the password is wrong"), plus a distinct one for the rate limiter.
+  const errorMessage =
+    params?.error === "throttled"
+      ? "Too many sign-in attempts. Please wait a few minutes and try again."
+      : params?.error
+        ? "Incorrect email or password, or the account is deactivated."
+        : null;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-night px-4">
@@ -31,9 +42,12 @@ export default async function LoginPage({
           action={loginAction}
           className="rounded-[20px] border border-line bg-panel p-6"
         >
-          {params?.error && (
-            <p className="mb-4 rounded-xl border border-bad/30 bg-bad/10 px-4 py-2.5 text-xs font-semibold text-bad">
-              Incorrect email or password, or the account is deactivated.
+          {errorMessage && (
+            <p
+              role="alert"
+              className="mb-4 rounded-xl border border-bad/30 bg-bad/10 px-4 py-2.5 text-xs font-semibold text-bad"
+            >
+              {errorMessage}
             </p>
           )}
           <Field label="Email" className="mb-4">
