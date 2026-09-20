@@ -1,0 +1,46 @@
+# rCloud — website armour (security headers)
+# =============================================================================
+# This is the plain-text `_headers` file promised in the deployment notes: the
+# easiest way to tell browsers "do not let other sites frame, script or sniff
+# this one".
+#
+# How it is applied on this stack
+# -----------------------------------------------------------------------------
+# rCloud is a Next.js app on Netlify, and that changes which file wins:
+#
+#   * `public/_headers` (this file) and `netlify.toml` `[[headers]]` are read by
+#     the edge/CDN. They cover the files Netlify serves directly (images, the
+#     schedule JSON, static assets) and are also exactly what other static hosts
+#     such as Cloudflare Pages expect.
+#   * They are NOT reliably applied to responses produced by the Next.js runtime
+#     (HTML pages, `/api/*`, server actions) — that is what `next.config.ts`
+#     covers. In this repository the same values are declared there, generated
+#     from `src/lib/security/policy.ts`.
+#
+# So: keep this file, `netlify.toml` and `next.config.ts` saying the same thing.
+# `npm run check:headers` (scripts/check-security-headers.ts) verifies that and
+# fails if one of the copies falls behind.
+#
+# Syntax reminders for this file: one `path` line, then indented `Name: value`
+# lines; `#` starts a comment; duplicate keys for the same path are an error.
+
+/*
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; frame-src 'none'; child-src 'none'; media-src 'none'; manifest-src 'self'; worker-src 'self' blob:; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-site
+  X-Permitted-Cross-Domain-Policies: none
+  X-DNS-Prefetch-Control: off
+  Permissions-Policy: accelerometer=(), autoplay=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(self), screen-wake-lock=(), usb=(), xr-spatial-tracking=()
+
+# Signed-in admin pages — never cached, never indexed.
+/admin/*
+  Cache-Control: no-store, max-age=0, must-revalidate
+  X-Robots-Tag: noindex, nofollow
+
+# The PDF report endpoint is generated per request.
+/api/constituency/*
+  Cache-Control: no-store, max-age=0, must-revalidate

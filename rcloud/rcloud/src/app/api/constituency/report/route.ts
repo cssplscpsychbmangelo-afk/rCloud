@@ -17,6 +17,7 @@
 
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { clientIpFrom, take } from "@/lib/security/rateLimit";
 import { db } from "@/lib/server/db";
 import {
   constituencyPeriods,
@@ -36,6 +37,16 @@ export const dynamic = "force-dynamic";
 const MAX_NAME = 120;
 const MAX_SECTION = 60;
 
+/**
+ * This is the most expensive request rCloud serves (a PDF is rendered from
+ * scratch, with a logo and figures read from the sheet), so it is rate limited:
+ * a normal student downloads a handful of reports, a script gets cut off.
+ */
+const REPORT_LIMIT = { limit: 15, windowMs: 10 * 60_000, blockMs: 10 * 60_000 };
+
+/** Reject oversized bodies before parsing — the payload is two short strings. */
+const MAX_BODY_BYTES = 4_096;
+
 type Payload = { period: string; name: string; section: string };
 
 function clean(value: unknown, max: number): string {
@@ -45,6 +56,25 @@ function clean(value: unknown, max: number): string {
 }
 
 export async function POST(request: Request) {
+  const declaredLength = Number(request.headers.get("content-length") ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "That request was too large." }, { status: 413 });
+  }
+
+  const limit = take(`report:${clientIpFrom(request.headers)}`, REPORT_LIMIT);
+  if (limit.blocked) {
+    return NextResponse.json(
+      {
+        error:
+          "Too many reports requested in a short time. Please wait a few minutes and try again.",
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limit.retryAfterSeconds) },
+      },
+    );
+  }
+
   let payload: Payload;
   try {
     const body = (await request.json()) as Record<string, unknown>;

@@ -86,6 +86,35 @@ enforcement happens in every server action (`requirePermission`) and page guard
   URLs) — projects take an optional external photo link instead.
 - Seed sources (original Carrd content): `src/lib/data/*.ts`.
 
+## Security
+
+Short version — the full policy, the honest gaps and the ordered next steps are
+in [`../../SECURITY.md`](../../SECURITY.md).
+
+- **Website armour.** `src/lib/security/policy.ts` builds the CSP
+  (`frame-ancestors 'none'` — no other site may frame rCloud — plus
+  `object-src`/`frame-src 'none'`, `base-uri`/`form-action 'self'`), HSTS,
+  `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-*` and
+  `X-Robots-Tag`. `next.config.ts` applies them to every response the Next.js
+  runtime produces, `netlify.toml` and `public/_headers` carry the identical
+  values for everything the CDN serves. `npm run check:headers` fails when the
+  copies drift.
+- **Copycat protection.** Self-referential canonical URLs + `metadataBase`,
+  `robots.txt` (`/admin` and `/api` disallowed), `sitemap.xml`, schema.org
+  `Organization` data, `noindex` on deploy previews and the admin area, and an
+  "official site / report a copy" line in the footer once
+  `NEXT_PUBLIC_SITE_URL` is set.
+- **Sign-in.** scrypt with per-password salt and constant-time comparison,
+  random session tokens stored only as SHA-256 hashes, `HttpOnly`/`Secure`/
+  `SameSite=Lax` cookie, in-memory rate limiting (6 per account / 20 per address
+  per 15 min), decoy-hash verification so unknown emails cost the same time,
+  one generic error message, no sign-up, permissions enforced in every server
+  action.
+- **Expensive endpoints.** The constituency PDF report is rate limited
+  (15 per 10 min per address, `Retry-After`) with a 4 KB body cap.
+- **Diagnostics.** Sign-in logging is off unless `RCLOUD_AUTH_DEBUG=1` is set
+  locally, and never prints tokens, hashes or emails.
+
 ## Deploy to Netlify (via GitHub)
 
 1. `git init && git add -A && git commit -m "rCloud"` then push to a new GitHub
@@ -96,13 +125,28 @@ enforcement happens in every server action (`requirePermission`) and page guard
 3. Create a free managed Postgres (Neon or Supabase). In Netlify → Site
    configuration → Environment variables, set:
    - `DATABASE_URL` = the pooled Postgres connection string
-   - `AUTH_SECRET` = any long random string (`openssl rand -hex 32`)
+   - `NEXT_PUBLIC_SITE_URL` = the site's public origin, e.g.
+     `https://rcloud.netlify.app` — this is what the canonical `<link>`, the
+     sitemap, the footer's "official site" line and the anti-copycat
+     declarations are built from
+   - `AUTH_SECRET` = any long random string (`openssl rand -hex 32`); the
+     session implementation does not read it today, it is kept for future
+     signed-token work. All three are placeholders in `.env.example`.
 4. Push the schema + seed once against that database:
    `DATABASE_URL=… npm run db:push && DATABASE_URL=… npm run db:seed`
    (run from any machine with Node; afterwards log in and change the dev
    passwords via the accounts listed above — or ask for an SQL snippet).
 5. Deploy. The public site, /admin and the Constituency Sheets sync all work
    serverless; no PHP, no extra services.
+6. Change both seeded admin passwords (Admin → Account) before announcing the
+   URL, then verify the security headers reached production:
+
+   ```bash
+   curl -sI https://<your-site>/ | grep -iE 'content-security|x-frame|strict-transport'
+   npm run check:headers        # keeps the three copies of the rules in sync
+   ```
+
+   Full checklist and rationale: [`../../SECURITY.md`](../../SECURITY.md).
 
 ## Constituency Check (Google Sheets)
 

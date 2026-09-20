@@ -24,6 +24,45 @@
   [headers.values]
     Cache-Control = "public, max-age=300, stale-while-revalidate=3600"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Security headers — the "website armour".
+#
+# These rules are applied by Netlify's edge to everything Netlify serves
+# itself (images, the schedule JSON, static assets). They do NOT reliably reach
+# responses produced by the Next.js runtime — the HTML pages, `/api/*` and
+# server actions — which is why the identical values are also declared in
+# `next.config.ts` (generated from `src/lib/security/policy.ts`), with a
+# plain-text third copy in `public/_headers`.
+#
+# Keep the three in sync: `npm run check:headers` fails loudly if they drift.
+# ─────────────────────────────────────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; frame-src 'none'; child-src 'none'; media-src 'none'; manifest-src 'self'; worker-src 'self' blob:; upgrade-insecure-requests"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-site"
+    X-Permitted-Cross-Domain-Policies = "none"
+    X-DNS-Prefetch-Control = "off"
+    Permissions-Policy = "accelerometer=(), autoplay=(), browsing-topics=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(self), screen-wake-lock=(), usb=(), xr-spatial-tracking=()"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains"
+    X-Frame-Options = "DENY"
+
+# Signed-in admin pages: never cached anywhere, never indexed.
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0, must-revalidate"
+    X-Robots-Tag = "noindex, nofollow"
+
+# The constituency PDF report is generated per request.
+[[headers]]
+  for = "/api/constituency/*"
+  [headers.values]
+    Cache-Control = "no-store, max-age=0, must-revalidate"
+
 # SPA-style fallbacks are handled by the Next.js plugin;
 # add redirects here only for legacy URLs, e.g.:
 # [[redirects]]

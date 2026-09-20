@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
@@ -12,6 +13,7 @@ import {
   officers,
   projects,
   resources,
+  sessions,
   users,
   roomfinderEntries,
   roomfinderSettings,
@@ -25,6 +27,13 @@ import {
   hashPassword,
   verifyPassword,
 } from "./auth";
+import { decoyPasswordHash } from "./passwords";
+import {
+  clearFailures,
+  clientIpFrom,
+  isBlocked,
+  recordFailure,
+} from "@/lib/security/rateLimit";
 import { parseSheetId as parseConstituencySheetId, readConstituencySheet } from "./constituencySheet";
 import {
   parseSheetId as parseRoomfinderSheetId,
@@ -70,14 +79,63 @@ function back(path: string) {
 
 /* ---------------------------------- auth ---------------------------------- */
 
-export async function loginAction(form: FormData): Promise<void> {
-  const email = str(form, "email").toLowerCase();
-  const password = String(form.get("password") ?? "");
+/**
+ * Sign-in.
+ *
+ * Hardening applied here (in addition to the `HttpOnly`/`Secure`/`SameSite`
+ * cookie and the hashed session tokens in `auth.ts`):
+ *
+ *  1. **Rate limiting.** Six wrong passwords for one account, or twenty from
+ *     one address, within 15 minutes blocks that key for 15 minutes — password
+ *     guessing against two shared accounts becomes impractical.
+ *  2. **Constant work.** When the email is unknown we still run the same scrypt
+ *     verification against a decoy hash, so response time does not reveal which
+ *     addresses exist.
+ *  3. **One message.** Callers always get the same "incorrect email or
+ *     password" answer, and only two accounts can ever sign in (no sign-up).
+ *
+ * CSRF is handled upstream: Next.js only accepts a server action POST when the
+ * request's `Origin` matches the site's own host.
+ */
+const LOGIN_LIMITS = {
+  /** Per account: wrong passwords for the same email. */
+  account: { limit: 6, windowMs: 15 * 60_000, blockMs: 15 * 60_000 },
+  /** Per network address: wrong passwords across every email tried. */
+  address: { limit: 20, windowMs: 15 * 60_000, blockMs: 15 * 60_000 },
+} as const;
 
-  const [user] = await db.select().from(users).where(eq(users.email, email));
-  if (!user || !user.active || !verifyPassword(password, user.passwordHash)) {
+export async function loginAction(form: FormData): Promise<void> {
+  const email = str(form, "email").toLowerCase().slice(0, 200);
+  const password = String(form.get("password") ?? "").slice(0, 400);
+
+  const requestHeaders = await headers();
+  const address = clientIpFrom(requestHeaders);
+
+  // Both counters are checked before any password work happens.
+  const checks = [
+    { key: `login:account:${email || "blank"}`, options: LOGIN_LIMITS.account },
+    { key: `login:address:${address}`, options: LOGIN_LIMITS.address },
+  ];
+
+  if (checks.some(({ key, options }) => isBlocked(key, options).blocked)) {
+    redirect("/admin/login?error=throttled");
+  }
+
+  const [user] = email
+    ? await db.select().from(users).where(eq(users.email, email))
+    : [];
+
+  const storedHash = user?.passwordHash ?? decoyPasswordHash();
+  const passwordOk = verifyPassword(password, storedHash);
+
+  if (!user || !user.active || !passwordOk) {
+    for (const { key, options } of checks) recordFailure(key, options);
     redirect("/admin/login?error=1");
   }
+
+  // A legitimate sign-in clears the counters for that account and address.
+  for (const { key } of checks) clearFailures(key);
+
   await createSession(user.id);
   redirect("/admin");
 }
@@ -391,6 +449,15 @@ export async function updateAdminCredentials(form: FormData): Promise<void> {
   if (Object.keys(values).length > 0) {
     await db.update(users).set(values).where(eq(users.id, user.id));
   }
+
+  // Changing the password signs every other device out, then signs this one
+  // back in. If the reason for the change was a leaked or shared credential,
+  // the sessions created with it must not outlive it.
+  if (values.passwordHash) {
+    await db.delete(sessions).where(eq(sessions.userId, user.id));
+    await createSession(user.id);
+  }
+
   back("/admin/account?saved=1");
 }
 
