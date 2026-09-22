@@ -148,6 +148,42 @@ in [`../../SECURITY.md`](../../SECURITY.md).
 
    Full checklist and rationale: [`../../SECURITY.md`](../../SECURITY.md).
 
+## Officers & their availability schedule
+
+The public `/officers` page is an interactive roster, and the council's
+published availability schedule is part of it.
+
+- **Weekly timetable.** One table per day (Monday—Friday), hours down the side
+  and one column per officer: green = "no scheduled classes" (the officer can be
+  found), red = in class, dim = no hours published for that officer that day.
+  Lunch is drawn as the schedule draws it, a single band across the day. The
+  student's own clock marks today and the current hour, and there is a
+  "Free now" count with a "show only free now" filter. Tapping an officer's
+  column opens (and scrolls to) that officer's card.
+- **Roster board.** Search by name / position / program, filter by executive
+  posts or program representatives, filter by program chips built only from
+  values that exist in the roster, sort by council order or A—Z, expand a card
+  for the full record, and share one officer with `?officer=<id>` (copy-link
+  button included). An officer inside a published block right now is badged
+  "On duty now".
+- **Where the data comes from.** `officer_availability` holds published hours:
+  weekly blocks (repeat every weekday) or dated blocks (one-off). The
+  transcribed **Executive Order No. 10, s. 2026** schedule lives in
+  `src/lib/data/officerAvailabilityEo.ts` and is what the page shows until the
+  council publishes hours of its own — from that moment the database is the
+  single source, so an edited block is never mixed with the transcription.
+- **Managing it.** Admin — Officers — *Availability schedule* adds, edits and
+  deletes blocks (officer, weekly or one-off, start/end, location, note), or
+  loads the whole Executive Order schedule in one click. Columns of the order
+  are matched to the roster by position, then portfolio, then roster order
+  (there are two Psychology board members), and anything unmatched is reported
+  instead of being attached to the wrong officer. `npm run db:seed` publishes
+  the same schedule on a fresh database.
+- **Honesty.** Availability means "no published class" and the page says so;
+  it never claims an officer is at the office. Nothing is invented: blocks come
+  from the published order or from an admin, and a day without published hours
+  shows as unpublished, not as free.
+
 ## Constituency Check (Google Sheets)
 
 - Flow: Google Form → Google Sheet → rCloud. The Sheet is the only place

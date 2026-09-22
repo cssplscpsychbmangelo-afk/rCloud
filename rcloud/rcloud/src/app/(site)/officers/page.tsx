@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Reveal from "@/components/Reveal";
 import BackHome from "@/components/BackHome";
-import OfficersBoard from "@/components/officers/OfficersBoard";
+import OfficersSection from "@/components/officers/OfficersSection";
 import HiddenPage from "@/components/HiddenPage";
 import { site } from "@/lib/data/site";
-import { getOfficers } from "@/lib/server/queries";
+import { getOfficerAvailability, getOfficers } from "@/lib/server/queries";
+import { eoAvailabilityFor } from "@/lib/officers";
 import { getSiteVisibility } from "@/lib/server/siteVisibility";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +18,22 @@ export const metadata: Metadata = {
 };
 
 export default async function OfficersPage() {
-  const [visibility, officers] = await Promise.all([
+  const [visibility, officers, availability] = await Promise.all([
     getSiteVisibility(),
     getOfficers(),
+    getOfficerAvailability(),
   ]);
+
+  // Only active officers are rendered, so only their hours travel. While the
+  // council has not published hours of its own, the transcribed Executive
+  // Order schedule is shown (clearly labelled) so students have the timetable
+  // from day one; publishing any hours switches to that data alone.
+  const visibleIds = new Set(officers.map((officer) => officer.id));
+  const publishedHours = availability.filter((slot) =>
+    visibleIds.has(slot.officerId),
+  );
+  const officerHours =
+    publishedHours.length > 0 ? publishedHours : eoAvailabilityFor(officers);
 
   if (!visibility.showOfficers) {
     return <HiddenPage title="LSC Officers" eyebrow={`AY ${site.term}`} />;
@@ -40,7 +53,9 @@ export default async function OfficersPage() {
         </h1>
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-mist sm:text-base">
           The elected student officers serving the College of Social Sciences
-          and Philosophy — one council, every program represented.
+          and Philosophy — one council, every program represented. Search the
+          roster, filter by program, and open a card to see that officer&apos;s
+          profile and published duty / consultation hours.
         </p>
       </Reveal>
 
@@ -54,7 +69,7 @@ export default async function OfficersPage() {
             </div>
           }
         >
-          <OfficersBoard officers={officers} />
+          <OfficersSection officers={officers} availability={officerHours} />
         </Suspense>
       </Reveal>
 

@@ -10,9 +10,11 @@ import {
   budget,
   roomfinderEntries,
   roomfinderSettings,
+  officerAvailability,
 } from "./schema";
 import type {
   Announcement,
+  OfficerAvailability,
   BudgetSummary,
   ConstituencyPeriod,
   Officer,
@@ -245,5 +247,35 @@ export async function getRoomfinderSource(): Promise<{
     };
   } catch {
     return { custom: false, version: "static" };
+  }
+}
+
+/**
+ * Published duty / consultation hours, grouped by officer on the client.
+ *
+ * Read-only and tiny (a handful of rows per officer). Returns an empty list
+ * when nothing has been published yet — the Officers page then simply shows no
+ * schedule rather than an invented one.
+ */
+export async function getOfficerAvailability(): Promise<OfficerAvailability[]> {
+  try {
+    await ensureSchema();
+    const rows = await db
+      .select()
+      .from(officerAvailability)
+      .orderBy(asc(officerAvailability.displayOrder), asc(officerAvailability.start));
+    return rows.map((r) => ({
+      id: r.id,
+      officerId: r.officerId,
+      kind: r.kind === "date" ? "date" : "weekly",
+      day: r.day,
+      date: r.date,
+      start: r.start,
+      end: r.end,
+      location: r.location,
+      note: r.note,
+    }));
+  } catch {
+    return [];
   }
 }

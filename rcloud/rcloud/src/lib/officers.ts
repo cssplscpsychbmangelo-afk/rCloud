@@ -8,6 +8,8 @@
  */
 
 import type { Officer, OfficerAvailability } from "./types";
+import { DAY_NAMES, toMinutes } from "./roomfinder";
+import { EO_COLUMNS, type EoColumn } from "./data/officerAvailabilityEo";
 
 /** "Board Member — Psychology" → { position: "Board Member", program: "Psychology" } */
 export function splitPosition(officer: Officer): {
@@ -119,4 +121,124 @@ export function describeFilters(
   if (filters.query.trim()) parts.push(`“${filters.query.trim()}”`);
   void programs;
   return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Duty hours — is an officer in a published block right now?          */
+/* ------------------------------------------------------------------ */
+
+/** Local calendar date as "YYYY-MM-DD" (the student's device, not a server). */
+function localDateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * True while `now` falls inside the block.
+ *
+ * Weekly blocks match on the local weekday; dated blocks match on the local
+ * calendar date. Times are compared in minutes, so a block never "runs" on a
+ * day the council did not publish.
+ */
+export function isSlotLive(
+  slot: OfficerAvailability,
+  now: Date = new Date(),
+): boolean {
+  const start = toMinutes(slot.start);
+  const end = toMinutes(slot.end);
+  if (start === null || end === null || start >= end) return false;
+  if (slot.kind === "date") {
+    if (slot.date !== localDateKey(now)) return false;
+  } else {
+    const today = DAY_NAMES[(now.getDay() + 6) % 7];
+    if (slot.day !== today) return false;
+  }
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  return minutes >= start && minutes < end;
+}
+
+/** The block an officer is inside right now, if any. */
+export function liveSlot(
+  slots: OfficerAvailability[],
+  now: Date = new Date(),
+): OfficerAvailability | null {
+  return slots.find((slot) => isSlotLive(slot, now)) ?? null;
+}
+
+/** True when any of the officer's published blocks covers `now`. */
+export function isOnDutyNow(
+  slots: OfficerAvailability[],
+  now: Date = new Date(),
+): boolean {
+  return liveSlot(slots, now) !== null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Executive Order No. 10 schedule ↔ roster matching                   */
+/* ------------------------------------------------------------------ */
+
+export type MatchedEoColumn = { column: EoColumn; officer: Officer };
+
+/**
+ * Matches each column of the published availability schedule to a roster
+ * record: by position first, then portfolio, and finally by roster order when
+ * a position has several holders (the order lists two Psychology board
+ * members). Columns that match nobody are returned separately — they are
+ * reported, never attached to the wrong officer.
+ */
+export function matchEoColumns(officers: Officer[]): {
+  matched: MatchedEoColumn[];
+  unmatched: EoColumn[];
+} {
+  const matched: MatchedEoColumn[] = [];
+  const unmatched: EoColumn[] = [];
+  for (const column of EO_COLUMNS) {
+    const candidates = officers.filter((officer) => {
+      if (!officer.position.toLowerCase().includes(column.position.toLowerCase())) {
+        return false;
+      }
+      if (
+        column.portfolio &&
+        !(officer.portfolio ?? "").toLowerCase().includes(column.portfolio.toLowerCase())
+      ) {
+        return false;
+      }
+      return true;
+    });
+    const officer = candidates[column.index ?? 0];
+    if (officer) matched.push({ column, officer });
+    else unmatched.push(column);
+  }
+  return { matched, unmatched };
+}
+
+/**
+ * The transcribed Executive Order schedule, shaped like published hours.
+ *
+ * Used only while the council has not published any hours of its own: the
+ * moment the table has rows (Admin → Officers, including the one-click
+ * "Load EO No. 10" button) those are the single source, so an edited block is
+ * never mixed with this transcription. Ids are prefixed `eo:` so callers can
+ * tell the two apart if they ever need to.
+ */
+export function eoAvailabilityFor(officers: Officer[]): OfficerAvailability[] {
+  const { matched } = matchEoColumns(officers);
+  const slots: OfficerAvailability[] = [];
+  for (const { column, officer } of matched) {
+    for (const block of column.blocks) {
+      slots.push({
+        id: `eo:${officer.id}:${block.day}:${block.start}`,
+        officerId: officer.id,
+        kind: "weekly",
+        day: block.day,
+        date: "",
+        start: block.start,
+        end: block.end,
+        location: "",
+        note: "",
+      });
+    }
+  }
+  return slots;
 }

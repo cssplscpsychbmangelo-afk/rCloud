@@ -38,7 +38,7 @@ export const adminNav: AdminNavItem[] = [
     href: "/admin/officers",
     label: "Officers",
     description:
-      "Manage the council cabinet, positions, photos and display order.",
+      "Manage the council cabinet, positions, photos, display order — and publish each officer's duty hours.",
     perm: "content",
   },
   {

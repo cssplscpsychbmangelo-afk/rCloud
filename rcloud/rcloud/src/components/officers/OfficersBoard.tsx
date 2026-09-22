@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import type { Officer, OfficerAvailability } from "@/lib/types";
 import {
   collectPrograms,
   describeFilters,
   hasProgram,
+  isSlotLive,
+  liveSlot,
   selectOfficers,
   splitPosition,
   type OfficerScope,
@@ -19,6 +20,7 @@ import { slotLabel } from "@/lib/officers";
 import {
   IconArrowRight,
   IconClose,
+  IconClock,
   IconSearch,
   IconSparkle,
   IconUsers,
@@ -49,32 +51,45 @@ const chipOff =
 export default function OfficersBoard({
   officers,
   availability = [],
+  openId,
+  onOpenChange,
 }: {
   officers: Officer[];
   /** Published duty / consultation hours — nothing is shown when there are none. */
   availability?: OfficerAvailability[];
+  /** Expanded card, owned by the section so the timetable can open one too. */
+  openId: string | null;
+  onOpenChange: (officerId: string | null) => void;
 }) {
-  const searchParams = useSearchParams();
   const programs = useMemo(() => collectPrograms(officers), [officers]);
 
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<OfficerScope>("all");
   const [program, setProgram] = useState<string | null>(null);
   const [sort, setSort] = useState<OfficerSort>("order");
-  /**
-   * The card that is expanded. `/officers?officer=<id>` opens one straight
-   * away (deep link), read once on mount like the Room Finder's `?room=`.
-   */
-  const [openId, setOpenId] = useState<string | null>(() => {
-    try {
-      return searchParams?.get("officer") ?? null;
-    } catch {
-      return null;
-    }
-  });
+  const [onlyOnDuty, setOnlyOnDuty] = useState(false);
+  /** Local clock, ticked every 30 s — duty status never asks a server. */
+  const [now, setNow] = useState(() => new Date());
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const slotsFor = useCallback(
+    (officerId: string) => availability.filter((slot) => slot.officerId === officerId),
+    [availability],
+  );
+  const onDutyCount = useMemo(
+    () =>
+      officers.filter((officer) => liveSlot(slotsFor(officer.id), now) !== null)
+        .length,
+    [officers, slotsFor, now],
+  );
 
   // A deep-linked card is scrolled into view (no state writes here).
   useEffect(() => {
@@ -90,21 +105,28 @@ export default function OfficersBoard({
   }, [openId, officers]);
 
   const filters = { query, scope, program, sort };
-  const visible = useMemo(
-    () => selectOfficers(officers, { query, scope, program, sort }),
-    [officers, query, scope, program, sort],
-  );
+  const visible = useMemo(() => {
+    const selected = selectOfficers(officers, { query, scope, program, sort });
+    return onlyOnDuty
+      ? selected.filter((officer) => liveSlot(slotsFor(officer.id), now) !== null)
+      : selected;
+  }, [officers, query, scope, program, sort, onlyOnDuty, slotsFor, now]);
   const activeLabel = describeFilters(filters, programs);
   const filtering =
-    query.trim() !== "" || scope !== "all" || program !== null || sort !== "order";
+    query.trim() !== "" ||
+    scope !== "all" ||
+    program !== null ||
+    sort !== "order" ||
+    onlyOnDuty;
 
   const reset = useCallback(() => {
     setQuery("");
     setScope("all");
     setProgram(null);
     setSort("order");
-    setOpenId(null);
-  }, []);
+    setOnlyOnDuty(false);
+    onOpenChange(null);
+  }, [onOpenChange]);
 
   const toggleProgram = useCallback((value: string) => {
     setProgram((current) => (current === value ? null : value));
@@ -189,6 +211,20 @@ export default function OfficersBoard({
 
           <span aria-hidden className="mx-1 hidden h-6 w-px bg-line sm:block" />
 
+          {availability.length > 0 && (
+            <button
+              type="button"
+              aria-pressed={onlyOnDuty}
+              onClick={() => setOnlyOnDuty((current) => !current)}
+              className={`${chip} ${onlyOnDuty ? "border-ok/50 bg-ok/10 text-ok" : chipOff}`}
+              title="Officers inside a published duty block right now"
+            >
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
+              On duty now
+              <span className="tnum text-[11px] opacity-80">{onDutyCount}</span>
+            </button>
+          )}
+
           <button
             type="button"
             aria-pressed={sort === "az"}
@@ -256,12 +292,12 @@ export default function OfficersBoard({
           {visible.map((officer) => {
             const { position, program: officerProgram } = splitPosition(officer);
             const open = openId === officer.id;
-            const slots = availability.filter(
-              (slot) => slot.officerId === officer.id,
-            );
+            const slots = slotsFor(officer.id);
+            const live = liveSlot(slots, now);
             return (
               <div
                 key={officer.id}
+                id={`officer-${officer.id}`}
                 ref={(node) => {
                   cardRefs.current[officer.id] = node;
                 }}
@@ -274,7 +310,7 @@ export default function OfficersBoard({
                 <button
                   type="button"
                   aria-expanded={open}
-                  onClick={() => setOpenId(open ? null : officer.id)}
+                  onClick={() => onOpenChange(open ? null : officer.id)}
                   className="flex grow items-center gap-4 rounded-[20px] p-5 text-left transition-colors duration-200 active:bg-vio-950/60 press sm:flex-col sm:items-center sm:gap-5 sm:p-6 sm:text-center"
                 >
                   {officer.photoUrl ? (
@@ -303,6 +339,12 @@ export default function OfficersBoard({
                     {officerProgram && (
                       <span className="mt-1.5 inline-flex items-center rounded-full border border-line bg-panel-2 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-mist">
                         {officerProgram}
+                      </span>
+                    )}
+                    {live && (
+                      <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-ok/40 bg-ok/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-ok">
+                        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
+                        On duty now
                       </span>
                     )}
                     <span className="mt-2 block text-[11px] font-semibold text-dim">
@@ -339,7 +381,11 @@ export default function OfficersBoard({
                           {slots.map((slot) => (
                             <li
                               key={slot.id}
-                              className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-mist"
+                              className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-lg px-2 py-1 text-xs ${
+                                isSlotLive(slot, now)
+                                  ? "bg-ok/10 text-snow ring-1 ring-ok/30"
+                                  : "text-mist"
+                              }`}
                             >
                               <span className="font-semibold text-snow">
                                 {slotLabel(slot)}
@@ -351,6 +397,12 @@ export default function OfficersBoard({
                               {slot.note && (
                                 <span className="w-full text-[11px] text-dim">
                                   {slot.note}
+                                </span>
+                              )}
+                              {isSlotLive(slot, now) && (
+                                <span className="ms-auto inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.12em] text-ok">
+                                  <IconClock size={11} />
+                                  now
                                 </span>
                               )}
                             </li>

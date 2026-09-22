@@ -52,6 +52,23 @@ export function ensureSchema(): Promise<void> {
           )
         `);
 
+        // Officer duty / consultation hours (availability schedule)
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS officer_availability (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            officer_id text NOT NULL,
+            kind text NOT NULL DEFAULT 'weekly',
+            day text NOT NULL DEFAULT '',
+            "date" text NOT NULL DEFAULT '',
+            start text NOT NULL,
+            "end" text NOT NULL,
+            location text NOT NULL DEFAULT '',
+            note text NOT NULL DEFAULT '',
+            display_order integer NOT NULL DEFAULT 0,
+            created_at timestamp NOT NULL DEFAULT now()
+          )
+        `);
+
         // Site visibility settings
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS site_settings (
