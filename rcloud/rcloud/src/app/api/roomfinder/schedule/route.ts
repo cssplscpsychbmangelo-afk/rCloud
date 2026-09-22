@@ -16,10 +16,25 @@ export async function GET() {
   await ensureSchema();
 
   try {
-    const [entries, settings] = await Promise.all([
-      db.select().from(roomfinderEntries).orderBy(asc(roomfinderEntries.position)),
-      db.select().from(roomfinderSettings).limit(1),
-    ]);
+    const entries = await db
+      .select()
+      .from(roomfinderEntries)
+      .orderBy(asc(roomfinderEntries.position));
+
+    // Metadata is best-effort: a problem with the settings row must never
+    // hide a schedule that was actually uploaded.
+    let settings: { lastSyncedAt: Date | null; sheetId: string }[] = [];
+    try {
+      settings = await db
+        .select({
+          lastSyncedAt: roomfinderSettings.lastSyncedAt,
+          sheetId: roomfinderSettings.sheetId,
+        })
+        .from(roomfinderSettings)
+        .limit(1);
+    } catch {
+      settings = [];
+    }
 
     if (entries.length === 0) {
       // No custom sheet yet — let client use placeholder JSON

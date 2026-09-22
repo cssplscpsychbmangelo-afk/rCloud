@@ -224,30 +224,41 @@ export async function getRoomfinderSource(): Promise<{
 }> {
   try {
     await ensureSchema();
+  } catch {
+    // ensureSchema never throws, but stay defensive.
+  }
+
+  // The two lookups are independent so that a problem with the settings row
+  // can never hide a schedule that was actually uploaded: if entries exist,
+  // the placeholders are retired no matter what.
+  let hasEntries = false;
+  try {
+    hasEntries =
+      (
+        await db
+          .select({ id: roomfinderEntries.id })
+          .from(roomfinderEntries)
+          .limit(1)
+      ).length > 0;
+  } catch {
+    hasEntries = false;
+  }
+
+  let syncedAt: Date | null = null;
+  try {
     const [settings] = await db
-      .select({
-        lastSyncedAt: roomfinderSettings.lastSyncedAt,
-        entryCount: roomfinderSettings.entryCount,
-      })
+      .select({ lastSyncedAt: roomfinderSettings.lastSyncedAt })
       .from(roomfinderSettings)
       .limit(1);
-
-    const syncedAt = settings?.lastSyncedAt ?? null;
-    const hasEntries =
-      (settings?.entryCount ?? 0) > 0 ||
-      (await db
-        .select({ id: roomfinderEntries.id })
-        .from(roomfinderEntries)
-        .limit(1)
-      ).length > 0;
-
-    return {
-      custom: hasEntries || syncedAt !== null,
-      version: syncedAt ? String(syncedAt.getTime()) : "static",
-    };
+    syncedAt = settings?.lastSyncedAt ?? null;
   } catch {
-    return { custom: false, version: "static" };
+    syncedAt = null;
   }
+
+  return {
+    custom: hasEntries || syncedAt !== null,
+    version: syncedAt ? String(syncedAt.getTime()) : hasEntries ? "custom" : "static",
+  };
 }
 
 /**

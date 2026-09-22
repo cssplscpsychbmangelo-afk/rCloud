@@ -36,6 +36,20 @@ export function ensureSchema(): Promise<void> {
           )
         `);
 
+        // Older databases created roomfinder_settings before these columns
+        // existed; CREATE TABLE IF NOT EXISTS never adds them, and every
+        // select/update against the table then fails — which silently drops
+        // the site back to the placeholder schedule even after an upload.
+        await db.execute(sql`
+          ALTER TABLE roomfinder_settings
+          ADD COLUMN IF NOT EXISTS sheet_id text NOT NULL DEFAULT '',
+          ADD COLUMN IF NOT EXISTS last_synced_at timestamp,
+          ADD COLUMN IF NOT EXISTS last_error text NOT NULL DEFAULT '',
+          ADD COLUMN IF NOT EXISTS tab_errors text NOT NULL DEFAULT '',
+          ADD COLUMN IF NOT EXISTS tab_count integer NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS entry_count integer NOT NULL DEFAULT 0
+        `);
+
         // Roomfinder entries table
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS roomfinder_entries (
@@ -50,6 +64,15 @@ export function ensureSchema(): Promise<void> {
             building text,
             position integer NOT NULL DEFAULT 0
           )
+        `);
+
+        await db.execute(sql`
+          ALTER TABLE roomfinder_entries
+          ADD COLUMN IF NOT EXISTS course text,
+          ADD COLUMN IF NOT EXISTS section text,
+          ADD COLUMN IF NOT EXISTS instructor text,
+          ADD COLUMN IF NOT EXISTS building text,
+          ADD COLUMN IF NOT EXISTS position integer NOT NULL DEFAULT 0
         `);
 
         // Officer duty / consultation hours (availability schedule)
