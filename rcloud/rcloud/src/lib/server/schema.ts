@@ -148,6 +148,35 @@ export const roomfinderEntries = pgTable("roomfinder_entries", {
   position: integer("position").notNull().default(0),
 });
 
+/**
+ * Published duty / consultation hours for an officer ("availability
+ * schedule"), managed in Admin → Officers.
+ *
+ * `kind` is either "weekly" (repeats every `day`) or "date" (happens once on
+ * `date`), because a council order can publish either form. Times are 24-hour
+ * "HH:MM" text; `location` and `note` are shown verbatim.
+ *
+ * No foreign key is declared on purpose: the table is also created by the
+ * runtime migration (`ensureSchema`) for databases that only have the tables
+ * the app creates itself, and `deleteOfficer` removes the matching rows.
+ */
+export const officerAvailability = pgTable("officer_availability", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  officerId: text("officer_id").notNull(),
+  /** "weekly" | "date" */
+  kind: text("kind").notNull().default("weekly"),
+  /** Monday…Sunday when kind = "weekly", otherwise "". */
+  day: text("day").notNull().default(""),
+  /** "YYYY-MM-DD" when kind = "date", otherwise "". */
+  date: text("date").notNull().default(""),
+  start: text("start").notNull(),
+  end: text("end").notNull(),
+  location: text("location").notNull().default(""),
+  note: text("note").notNull().default(""),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 /** Single-row site visibility toggles (Head Admin only). */
 export const siteSettings = pgTable("site_settings", {
   id: integer("id").primaryKey().default(1),

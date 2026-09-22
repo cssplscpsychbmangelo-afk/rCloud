@@ -59,7 +59,15 @@ All changes keep the core principle: **one small fetch, then everything local in
 
 ---
 
-## 3. Placeholders retained
+## 3. Placeholders — shown until first upload, retired after
+- If `roomfinder_entries` empty, API returns 204 — `useSchedule` falls back to `public/data/cssp-schedule.json` (existing placeholder).
+- Admin UI shows “Placeholders from /data/... are active” until first sync.
+- **After the first sync/upload** the pages read `getRoomfinderSource()` and pass
+  `placeholders: false` into `useSchedule`: the bundled sample is no longer
+  fetched, a cached sample copy is discarded, and a failed refresh shows an
+  honest error/offline state instead of sample rooms. The last-sync timestamp
+  doubles as a `?v=` cache key, so a fresh upload bypasses the API's 5-minute CDN cache.
+- “Clear & use placeholders” deletes custom entries and resets settings, bringing the placeholders back instantly.
 - If `roomfinder_entries` empty, API returns 204 → `useSchedule` falls back to `public/data/cssp-schedule.json` (existing placeholder).
 - Admin UI shows “Placeholders from /data/... are active” until first sync.
 - “Clear & use placeholders” button deletes custom entries and resets settings, reverting to placeholders instantly.
@@ -93,6 +101,22 @@ All changes keep the core principle: **one small fetch, then everything local in
 All optional — current usage already well within free tier.
 
 ---
+
+## 5b. Constituency PDF report — latency-tuned (2026-09-22)
+- **Logo**: the pre-downscaled 256 px copy bundled in the server code is used
+  first, so a report no longer decodes the 512 px source and box-filters it on
+  the request path (measured ~280 ms per cold process). Bytes are identical to
+  the old disk+downscale path.
+- **Sheet read**: 4 s budget (was 8 s), reused for 60 s, de-duplicated while in
+  flight, and remembered for 30 s when it fails — so one slow Google
+  response cannot make every following report wait. Skipped entirely when the
+  stored totals were synced in the last 2 minutes.
+- **Fonts**: only Helvetica and Helvetica-Bold are embedded; the unused oblique
+  face cost a decode per cold process and travelled in every PDF.
+- **Verified**: old vs new renderer output has byte-identical content streams
+  for the normal, no-student-details and multi-page cases.
+- Net effect: worst case per report is bounded (4 s Google + ~40 ms render); the
+  common case after a sync or a repeat visit is render-only.
 
 ## 6. Conclusion
 

@@ -17,11 +17,31 @@ import {
  * falls back to the static placeholder JSON (/data/cssp-schedule.json).
  * If the refresh fails but a cached copy exists, the room finder keeps
  * working with the most recently loaded schedule (clearly labelled).
+ *
+ * PLACEHOLDERS ARE RETIRED BY A REAL UPLOAD.
+ * The server tells this hook whether the council already has its own schedule
+ * (`placeholders: false`, from getRoomfinderSource()). In that mode:
+ *   - the bundled placeholder file is never fetched,
+ *   - any placeholder copy still sitting in this browser's cache is discarded,
+ *   - a network failure shows an honest "could not be loaded" state (or the
+ *     cached *real* schedule) instead of sample rooms pretending to be real.
+ * So once a Sheet is synced or a file is uploaded, the placeholders disappear
+ * from the site — they only come back after "Clear & use placeholders".
  */
 
 const API_URL = "/api/roomfinder/schedule";
 const DATA_URL = "/data/cssp-schedule.json";
 const CACHE_KEY = "rcloud.roomfinder.schedule.v1";
+
+/** Where a dataset came from — the admin's own upload, or the bundled sample. */
+export type ScheduleSource = "live" | "placeholder";
+
+export interface ScheduleOptions {
+  /** False once the council has its own schedule — kills the placeholders. */
+  placeholders?: boolean;
+  /** Last-sync stamp from the server; changes bust the CDN cache per sync. */
+  version?: string;
+}
 
 export interface ScheduleState {
   data: ScheduleDataset | null;
@@ -38,35 +58,63 @@ export interface ScheduleState {
 
 interface CachePayload {
   savedAt: string;
+  source: ScheduleSource;
   data: ScheduleDataset;
 }
 
-function readCache(): CachePayload | null {
+function clearCache() {
+  try {
+    window.localStorage.removeItem(CACHE_KEY);
+  } catch {
+    // Private mode / storage disabled — nothing cached anyway.
+  }
+}
+
+/**
+ * Reads the cached copy, but only one that is still allowed:
+ * a placeholder copy is refused (and deleted) when the council has its own
+ * schedule, so a sample schedule can never survive an upload in a returning
+ * visitor's browser.
+ */
+function readCache(allowPlaceholder: boolean): CachePayload | null {
   try {
     const raw = window.localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as CachePayload;
+    const parsed = JSON.parse(raw) as Partial<CachePayload>;
+    const source: ScheduleSource =
+      parsed.source === "placeholder" ? "placeholder" : "live";
+    if (source === "placeholder" && !allowPlaceholder) {
+      clearCache();
+      return null;
+    }
     const clean = sanitizeDataset(parsed.data);
     return clean
-      ? { savedAt: String(parsed.savedAt ?? ""), data: clean }
+      ? { savedAt: String(parsed.savedAt ?? ""), source, data: clean }
       : null;
   } catch {
     return null;
   }
 }
 
-function writeCache(data: ScheduleDataset) {
+function writeCache(data: ScheduleDataset, source: ScheduleSource) {
   try {
     window.localStorage.setItem(
       CACHE_KEY,
-      JSON.stringify({ savedAt: new Date().toISOString(), data }),
+      JSON.stringify({
+        savedAt: new Date().toISOString(),
+        source,
+        data,
+      } satisfies CachePayload),
     );
   } catch {
     // Private mode / storage full — the in-memory copy still works.
   }
 }
 
-export function useSchedule(): ScheduleState {
+export function useSchedule(options: ScheduleOptions = {}): ScheduleState {
+  const allowPlaceholder = options.placeholders !== false;
+  const version = options.version ?? "";
+
   const [data, setData] = useState<ScheduleDataset | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
@@ -85,24 +133,29 @@ export function useSchedule(): ScheduleState {
     Promise.resolve().then(() => {
       if (cancelled || hydrated.current) return;
       hydrated.current = true;
-      const cache = readCache();
+      const cache = readCache(allowPlaceholder);
       if (cache && dataRef.current === null) {
         dataRef.current = cache.data;
         setData(cache.data);
+        setIsPlaceholder(cache.source === "placeholder");
         setStatus("ready");
       }
     });
 
     async function load() {
-      // 1) Try live API (DB-synced sheet)
+      // 1) Try live API (DB-synced sheet). The version key changes on every
+      //    admin sync, so a fresh upload is never masked by a cached payload.
       try {
-        const res = await fetch(API_URL, { cache: "no-cache" });
+        const url = version
+          ? `${API_URL}?v=${encodeURIComponent(version)}`
+          : API_URL;
+        const res = await fetch(url, { cache: "no-cache" });
         if (res.status === 200) {
           const raw = await res.json();
           const clean = sanitizeDataset(raw);
           if (!clean) throw new Error("malformed api schedule");
           if (cancelled) return;
-          writeCache(clean);
+          writeCache(clean, "live");
           dataRef.current = clean;
           setData(clean);
           setStatus("ready");
@@ -110,12 +163,34 @@ export function useSchedule(): ScheduleState {
           setIsPlaceholder(false);
           return;
         }
-        // 204 means no custom sheet — fall through to placeholder
+        // 200 only means "the council has a schedule" — 204 means the DB has
+        // no custom data. Both fall through: 204 to the placeholder (if it is
+        // still allowed), anything else to the cached copy / error state.
       } catch {
-        // API failed, try placeholder next
+        // API failed, try the placeholder next (when it is still allowed)
       }
 
-      // 2) Fallback to static placeholder JSON
+      // 2) Fallback to the static placeholder JSON — only while the council
+      //    has NOT uploaded a schedule of its own.
+      if (!allowPlaceholder) {
+        if (cancelled) return;
+        if (!hydrated.current) {
+          hydrated.current = true;
+          const cache = readCache(false);
+          if (cache && dataRef.current === null) {
+            dataRef.current = cache.data;
+            setData(cache.data);
+          }
+        }
+        if (dataRef.current !== null) {
+          setStatus("ready");
+          setOffline(true);
+        } else {
+          setStatus("error");
+        }
+        return;
+      }
+
       try {
         const response = await fetch(DATA_URL, { cache: "no-cache" });
         if (!response.ok) throw new Error(String(response.status));
@@ -123,7 +198,7 @@ export function useSchedule(): ScheduleState {
         const clean = sanitizeDataset(raw);
         if (!clean) throw new Error("malformed schedule");
         if (cancelled) return;
-        writeCache(clean);
+        writeCache(clean, "placeholder");
         dataRef.current = clean;
         setData(clean);
         setStatus("ready");
@@ -133,10 +208,11 @@ export function useSchedule(): ScheduleState {
         if (cancelled) return;
         if (!hydrated.current) {
           hydrated.current = true;
-          const cache = readCache();
+          const cache = readCache(true);
           if (cache && dataRef.current === null) {
             dataRef.current = cache.data;
             setData(cache.data);
+            setIsPlaceholder(cache.source === "placeholder");
           }
         }
         if (dataRef.current !== null) {
@@ -154,7 +230,7 @@ export function useSchedule(): ScheduleState {
     return () => {
       cancelled = true;
     };
-  }, [attempt]);
+  }, [attempt, allowPlaceholder, version]);
 
   const retry = useCallback(() => {
     setAttempt((value) => value + 1);

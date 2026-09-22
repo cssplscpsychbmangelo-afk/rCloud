@@ -27,23 +27,34 @@ import {
   getOfficers,
   getProjects,
   getResources,
+  getRoomfinderSource,
 } from "@/lib/server/queries";
 import { getSiteVisibility } from "@/lib/server/siteVisibility";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [visibility, resources, featured, officers, projects, summary, constituency, announcements] =
-    await Promise.all([
-      getSiteVisibility(),
-      getResources(),
-      getFeaturedResources(),
-      getOfficers(),
-      getProjects(),
-      getBudgetSummary(),
-      getConstituency(),
-      getAnnouncements(),
-    ]);
+  const [
+    visibility,
+    resources,
+    featured,
+    officers,
+    projects,
+    summary,
+    constituency,
+    announcements,
+    roomfinderSource,
+  ] = await Promise.all([
+    getSiteVisibility(),
+    getResources(),
+    getFeaturedResources(),
+    getOfficers(),
+    getProjects(),
+    getBudgetSummary(),
+    getConstituency(),
+    getAnnouncements(),
+    getRoomfinderSource(),
+  ]);
 
   const latestPeriod =
     constituency.periods[constituency.periods.length - 1] ?? null;
@@ -163,7 +174,10 @@ export default async function HomePage() {
         <section className="border-b border-vio-700/30 bg-abyss/60">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
             <Reveal>
-              <RoomFinderTeaser />
+              <RoomFinderTeaser
+                hasCustomData={roomfinderSource.custom}
+                dataVersion={roomfinderSource.version}
+              />
             </Reveal>
           </div>
         </section>

@@ -21,12 +21,14 @@ async function main() {
   const { hashPassword } = await import("../src/lib/server/passwords");
   const {
     users, resources, officers, projects, announcements, budget,
+    officerAvailability,
   } = await import("../src/lib/server/schema");
 
   const { resources: resourceSeed } = await import("../src/lib/data/resources");
   const { officers: officerSeed } = await import("../src/lib/data/officers");
   const { projects: projectSeed } = await import("../src/lib/data/projects");
   const { announcements: announcementSeed } = await import("../src/lib/data/announcements");
+  const { matchEoColumns } = await import("../src/lib/officers");
 
   await db.execute(
     sql`TRUNCATE users, sessions, resources, officers, projects, announcements, budget RESTART IDENTITY CASCADE`,
@@ -76,6 +78,42 @@ async function main() {
     });
   }
 
+  /* ------------------ officer availability (EO No. 10, s. 2026) ------------ */
+  // The published availability schedule, matched to the roster just like the
+  // admin one-click loader does, so a freshly seeded database already shows
+  // the weekly timetable.
+  const seededOfficers = await db.select().from(officers);
+  const { matched } = matchEoColumns(
+    seededOfficers.map((officer) => ({
+      id: officer.id,
+      name: officer.name,
+      position: officer.position,
+      portfolio: officer.portfolio,
+      description: officer.description,
+      photoUrl: officer.photoUrl,
+      displayOrder: officer.displayOrder,
+      active: officer.active,
+    })),
+  );
+  let availabilityBlocks = 0;
+  for (const { column, officer } of matched) {
+    if (column.blocks.length === 0) continue;
+    await db.insert(officerAvailability).values(
+      column.blocks.map((block, position) => ({
+        officerId: officer.id,
+        kind: "weekly",
+        day: block.day,
+        date: "",
+        start: block.start,
+        end: block.end,
+        location: "",
+        note: "Executive Order No. 10, s. 2026 — no scheduled classes",
+        displayOrder: position,
+      })),
+    );
+    availabilityBlocks += column.blocks.length;
+  }
+
   /* -------------------------------- projects ------------------------------ */
   for (const p of projectSeed) {
     await db.insert(projects).values({
@@ -105,7 +143,8 @@ async function main() {
 
   console.log(`Seeded: ${accounts.length} accounts, ` +
     `${resourceSeed.length} resources, ${officerSeed.length} officers, ` +
-    `${projectSeed.length} projects, ${announcementSeed.length} announcements.`);
+    `${projectSeed.length} projects, ${announcementSeed.length} announcements, ` +
+    `${availabilityBlocks} officer availability blocks.`);
   console.log("Constituency data is not seeded — it syncs from the configured Google Sheet (Admin → Constituency → Refresh).");
   console.log(`Dev login: headadmin@rcloud.cssp / ${DEV_PASSWORD} (Head Admin, full access) · moderator@rcloud.cssp (Moderator, content only)`);
   process.exit(0);

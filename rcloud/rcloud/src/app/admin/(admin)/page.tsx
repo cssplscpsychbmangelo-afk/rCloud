@@ -1,14 +1,18 @@
-import Link from "next/link";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/server/db";
-import { projects, resources } from "@/lib/server/schema";
+import { projects, resources, roomfinderSettings } from "@/lib/server/schema";
 import { getBudgetSummary } from "@/lib/server/queries";
+import { getSiteVisibility } from "@/lib/server/siteVisibility";
+import { refreshConstituency, refreshRoomfinder } from "@/lib/server/actions";
+import DashboardBoard, {
+  type QuickAction,
+} from "@/components/admin/DashboardBoard";
 import { getSession } from "@/lib/server/auth";
 import { roleLabels, rolePermissions, type Role } from "@/lib/server/permissions";
 import { visibleAdminNav } from "@/lib/adminNav";
 import { formatPeso } from "@/lib/format";
 import { Card, PageHeader, Warn } from "@/components/admin/Ui";
 import { StatCard } from "@/components/Cards";
-import { IconArrowRight } from "@/components/Icons";
 import { ensureSchema } from "@/lib/server/migrate";
 
 export const dynamic = "force-dynamic";
@@ -21,10 +25,16 @@ export default async function DashboardPage({
   const params = await searchParams;
   const session = await getSession();
   await ensureSchema();
-  const [allResources, allProjects, summary] = await Promise.all([
+  const [allResources, allProjects, summary, roomfinderRow, visibility] = await Promise.all([
     db.select().from(resources),
     db.select().from(projects),
     getBudgetSummary(),
+    db
+      .select({ sheetId: roomfinderSettings.sheetId })
+      .from(roomfinderSettings)
+      .where(eq(roomfinderSettings.id, 1))
+      .limit(1),
+    getSiteVisibility(),
   ]);
 
   const role = session?.role ?? "";
@@ -41,6 +51,70 @@ export default async function DashboardPage({
     (p) => p.actualExpenditure > p.approvedBudget,
   );
 
+  // Quick actions are derived from the same role permissions as the section
+  // grid, so nobody is ever offered a button they cannot use.
+  const allowed = (href: string) =>
+    destinations.some((item) => item.href === href);
+  const quickActions: QuickAction[] = [
+    allowed("/admin/announcements") && {
+      href: "/admin/announcements",
+      label: "Post an announcement",
+      hint: "Write the advisory that appears first on the home page.",
+      icon: "bell" as const,
+    },
+    allowed("/admin/resources") && {
+      href: "/admin/resources",
+      label: "Add a resource",
+      hint: "Publish a document, form or link to the resource library.",
+      icon: "folder" as const,
+    },
+    allowed("/admin/projects") && {
+      href: "/admin/projects",
+      label: "Start a project",
+      hint: "Register a project, its budget and its progress.",
+      icon: "file" as const,
+    },
+    allowed("/admin/officers") && {
+      href: "/admin/officers",
+      label: "Update the roster",
+      hint: "Add officers, photos, positions and display order.",
+      icon: "users" as const,
+    },
+    allowed("/admin/budget") && {
+      href: "/admin/budget",
+      label: "Set the budget",
+      hint: "Total LSC budget plus each project's allocation.",
+      icon: "coins" as const,
+    },
+    allowed("/admin/roomfinder") && {
+      href: "/admin/roomfinder",
+      label: "Roomivility schedule",
+      hint: "Sync the room Sheet or upload a file for the Room Finder.",
+      icon: "door" as const,
+    },
+    allowed("/admin/site-visibility") && {
+      href: "/admin/site-visibility",
+      label: "Show or hide pages",
+      hint: "Turn public pages and home sections on or off.",
+      icon: "shield" as const,
+    },
+    allowed("/admin/account") && {
+      href: "/admin/account",
+      label: "Account & password",
+      hint: "Change the sign-in email or password for this admin.",
+      icon: "list" as const,
+    },
+  ].filter(Boolean) as QuickAction[];
+
+  const publicLinks = [
+    { href: "/", label: "Home" },
+    allowed("/admin/resources") && { href: "/resources", label: "Resources" },
+    visibility.showRoomfinder && { href: "/room-finder", label: "Roomivility" },
+    visibility.showProjects && { href: "/projects", label: "Projects" },
+    visibility.showOfficers && { href: "/officers", label: "Officers" },
+    visibility.showTransparency && { href: "/transparency", label: "Transparency" },
+  ].filter(Boolean) as Array<{ href: string; label: string }>;
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -55,42 +129,31 @@ export default async function DashboardPage({
         </Warn>
       )}
 
-      {/* ---------------------- Admin navigation only ---------------------- */}
-      <Card>
-        <h2 className="font-display text-base font-bold text-snow">
-          Admin sections
-        </h2>
-        <p className="mt-1.5 text-xs leading-relaxed text-mist">
-          Everything below stays inside the admin panel.
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {destinations.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="group flex flex-col gap-1.5 rounded-xl border border-line bg-night/40 p-4 transition-colors duration-200 hover:border-vio-600/60 hover:bg-panel-2 active:border-vio-500 press"
-            >
-              <span className="flex items-center justify-between gap-2">
-                <span className="font-display text-sm font-bold text-snow">
-                  {item.label}
-                </span>
-                <IconArrowRight
-                  size={15}
-                  className="shrink-0 text-vio-300 transition-transform duration-200 group-hover:translate-x-0.5"
-                />
-              </span>
-              <span className="text-xs leading-relaxed text-mist">
-                {item.description}
-              </span>
-            </Link>
-          ))}
-        </div>
-        {destinations.length === 0 && (
-          <p className="mt-4 text-sm text-mist">
+      {/* ------------- Interactive board: quick actions + sections ---------- */}
+      <DashboardBoard
+        sections={destinations.map((item) => ({
+          href: item.href,
+          label: item.label,
+          description: item.description,
+        }))}
+        quickActions={quickActions}
+        publicLinks={publicLinks}
+        refreshConstituency={
+          perms.includes("constituency") ? refreshConstituency : undefined
+        }
+        refreshRoomfinder={
+          perms.includes("roomfinder") ? refreshRoomfinder : undefined
+        }
+        roomfinderReady={Boolean(roomfinderRow[0]?.sheetId)}
+      />
+
+      {destinations.length === 0 && (
+        <Card>
+          <p className="text-sm text-mist">
             No admin sections are available to this account yet.
           </p>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* ------------------------------ Summary ---------------------------- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

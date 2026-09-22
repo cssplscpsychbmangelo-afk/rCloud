@@ -38,7 +38,7 @@ export const adminNav: AdminNavItem[] = [
     href: "/admin/officers",
     label: "Officers",
     description:
-      "Manage the council cabinet, positions, photos and display order.",
+      "Manage the council cabinet, positions, photos, display order — and publish each officer's duty hours.",
     perm: "content",
   },
   {
@@ -72,7 +72,7 @@ export const adminNav: AdminNavItem[] = [
     href: "/admin/roomfinder",
     label: "Roomivility",
     description:
-      "Connect the Roomivility Google Sheet — tabs are Room No. — and sync room schedules. Placeholders stay until you sync.",
+      "Connect the Roomivility Google Sheet — tabs are Room No. — and sync room schedules. Syncing retires the placeholder schedule.",
     perm: "roomfinder",
   },
   {

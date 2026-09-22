@@ -10,12 +10,15 @@
  * standard) while cutting a report from ~213 KB to ~62 KB, which matters on
  * mobile data.
  *
- * The bytes are resolved in this order (see `loadReportLogo`): the `public/`
- * file on disk, then the app's own origin over HTTP, then an embedded,
- * pre-downscaled copy bundled into the server code. The embedded copy
- * guarantees the report can always be prepared even when the function cannot
- * reach its own origin (e.g. Netlify rewrites `request.url` to an internal
- * host, so a self-fetch fails).
+ * Speed matters here: this runs inside the PDF request, and on a serverless
+ * host (Netlify) the process is cold on the first report, so the work below is
+ * paid by whichever student clicks first. The resolution order is therefore
+ * deliberately ordered "no decoding first":
+ *
+ *  1. An embedded, pre-downscaled copy bundled into the server code — a plain
+ *     base64 decode, no PNG decode/resize, available in every environment.
+ *  2. The `public/` file on disk (dev / `next start`), downscaled once.
+ *  3. The app's own origin over HTTP, downscaled once.
  *
  * The result is cached for the lifetime of the process, so resolution and
  * resize happen once per cold start — not once per report.
@@ -50,20 +53,27 @@ const LOGO_TARGET_PX = 256;
 /** Relative path of the source logo inside `public/`. */
 const LOGO_PUBLIC_PATH = "public/brand/cssp-lsc-logo.png";
 
+/**
+ * How long a fetched-from-origin logo may be reused. The file only changes on
+ * a deploy, and a reply older than this is simply refreshed — so no invalidation
+ * plumbing is needed.
+ */
+const REMOTE_TTL_MS = 10 * 60_000;
+
 let cache: Promise<Uint8Array | null> | null = null;
+let remoteCache: { at: number; bytes: Uint8Array } | null = null;
 
 /**
  * Returns the report logo as PNG bytes, downscaled to the size the report
- * draws. Resolution order:
+ * draws. Resolution order (fastest path first):
  *
- *  1. Read the `public/` file from disk — the single source of truth, and the
- *     fastest path in dev / `next start`.
- *  2. Fetch it from the app's own origin — kept for hosts where `public/` is
- *     served over HTTP rather than present on the function's filesystem.
- *  3. An embedded, pre-downscaled copy shipped in the server bundle. This
- *     guarantees the report can always be prepared, even when the function
- *     cannot reach its own origin (e.g. Netlify rewrites `request.url` to an
- *     internal host, which makes the self-fetch fail).
+ *  1. The embedded, pre-downscaled copy shipped in the server bundle — always
+ *     available, and no image work at all.
+ *  2. The `public/` file on disk — the single source of truth whenever the
+ *     filesystem is on hand.
+ *  3. The app's own origin — for hosts where `public/` is only served over
+ *     HTTP. Kept last because a self-fetch is the slowest option (and can fail
+ *     when Netlify rewrites `request.url` to an internal host).
  */
 export function loadReportLogo(origin: string): Promise<Uint8Array | null> {
   cache ??= resolveLogo(origin);
@@ -71,13 +81,16 @@ export function loadReportLogo(origin: string): Promise<Uint8Array | null> {
 }
 
 async function resolveLogo(origin: string): Promise<Uint8Array | null> {
+  const embedded = decodeEmbeddedLogo();
+  if (embedded) return embedded;
+
   const fromDisk = readLogoFromDisk();
   if (fromDisk) return downscalePng(fromDisk, LOGO_TARGET_PX) ?? fromDisk;
 
   const fetched = await fetchLogoFromOrigin(origin);
   if (fetched) return downscalePng(fetched, LOGO_TARGET_PX) ?? fetched;
 
-  return decodeEmbeddedLogo();
+  return null;
 }
 
 function readLogoFromDisk(): Uint8Array | null {
@@ -90,13 +103,16 @@ function readLogoFromDisk(): Uint8Array | null {
 }
 
 async function fetchLogoFromOrigin(origin: string): Promise<Uint8Array | null> {
+  const cached = remoteCache;
+  if (cached && Date.now() - cached.at < REMOTE_TTL_MS) return cached.bytes;
   try {
-    const response = await fetch(
-      new URL("/brand/cssp-lsc-logo.png", origin),
-      { cache: "no-store" },
-    );
+    const response = await fetch(new URL("/brand/cssp-lsc-logo.png", origin), {
+      cache: "no-store",
+    });
     if (!response.ok) return null;
-    return new Uint8Array(await response.arrayBuffer());
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.length > 0) remoteCache = { at: Date.now(), bytes };
+    return bytes.length > 0 ? bytes : null;
   } catch {
     return null;
   }

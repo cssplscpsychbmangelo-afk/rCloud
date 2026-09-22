@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { db } from "./db";
 import {
   announcements,
@@ -18,6 +18,7 @@ import {
   roomfinderEntries,
   roomfinderSettings,
   siteSettings,
+  officerAvailability,
 } from "./schema";
 import {
   createSession,
@@ -43,6 +44,9 @@ import {
   parseCsv,
 } from "./roomfinderSheet";
 import { ensureSchema } from "./migrate";
+import { toMinutes } from "@/lib/roomfinder";
+import { EO_SCHEDULE } from "@/lib/data/officerAvailabilityEo";
+import { matchEoColumns } from "@/lib/officers";
 
 /* --------------------------------- helpers -------------------------------- */
 
@@ -242,13 +246,181 @@ export async function saveOfficer(form: FormData): Promise<void> {
 
 export async function deleteOfficer(form: FormData): Promise<void> {
   await requirePermission("content");
-  await db.delete(officers).where(eq(officers.id, str(form, "id")));
+  const id = str(form, "id");
+  // No foreign key is declared on officer_availability (see schema.ts), so the
+  // published hours are removed with the officer here.
+  await db.delete(officerAvailability).where(eq(officerAvailability.officerId, id));
+  await db.delete(officers).where(eq(officers.id, id));
   back("/admin/officers");
 }
 
 export async function moveOfficer(form: FormData): Promise<void> {
   await requirePermission("content");
   await moveOrder(officers, str(form, "id"), Number(form.get("dir")), "/admin/officers");
+}
+
+/* ------------------------- officer availability hours ---------------------- */
+
+/**
+ * Publishes one duty / consultation block for an officer.
+ *
+ * Two shapes are accepted, matching how a council order publishes schedules:
+ *   - weekly → a weekday (Monday…Sunday), repeats every week
+ *   - date   → a calendar date ("YYYY-MM-DD"), happens once
+ *
+ * Everything is validated before it is stored: a block must know when it
+ * starts and ends (24-hour "HH:MM", start before end) and must be either a
+ * weekday or a date. Nothing is guessed on the officer's behalf.
+ */
+export async function saveOfficerAvailability(form: FormData): Promise<void> {
+  await requirePermission("content");
+  await ensureSchema();
+
+  const id = str(form, "id");
+  const officerId = str(form, "officerId");
+  if (!officerId) {
+    redirect(`/admin/officers?error=${encodeURIComponent("Choose an officer for these hours.")}`);
+  }
+
+  const kind = str(form, "kind") === "date" ? "date" : "weekly";
+  const day = str(form, "day");
+  const date = str(form, "date");
+  const start = str(form, "start");
+  const end = str(form, "end");
+  const location = str(form, "location");
+  const note = str(form, "note").slice(0, 300);
+
+  const startMinutes = toMinutes(start);
+  const endMinutes = toMinutes(end);
+  const badTime =
+    startMinutes === null || endMinutes === null || startMinutes >= endMinutes;
+  const badWhen = kind === "weekly" ? day === "" : !/^\d{4}-\d{2}-\d{2}$/.test(date);
+  if (badTime || badWhen) {
+    redirect(
+      `/admin/officers?error=${encodeURIComponent(
+        badTime
+          ? "Give a start and end time (24-hour HH:MM) with the start before the end."
+          : "Choose a weekday for weekly hours, or a date for a one-off block.",
+      )}`,
+    );
+  }
+
+  const existing = await db
+    .select({ id: officerAvailability.id })
+    .from(officerAvailability)
+    .orderBy(officerAvailability.displayOrder);
+  const position = id
+    ? (existing.findIndex((row) => row.id === id) + 1 || existing.length)
+    : existing.length;
+
+  const values = {
+    officerId,
+    kind,
+    day: kind === "weekly" ? day : "",
+    date: kind === "date" ? date : "",
+    start,
+    end,
+    location,
+    note,
+    displayOrder: position,
+  };
+
+  if (id) {
+    await db.update(officerAvailability).set(values).where(eq(officerAvailability.id, id));
+  } else {
+    await db.insert(officerAvailability).values(values);
+  }
+  back("/admin/officers?saved=1");
+}
+
+/**
+ * Loads the published Executive Order No. 10 (S. 2026) availability schedule.
+ *
+ * The order prints one column per officer ("Gov Gelo", "Psych BM Joaquin"…),
+ * so each documented block is matched to a roster record by position, then by
+ * portfolio, and finally by roster order when a position has several holders.
+ * Columns that match nobody are reported back instead of being dropped
+ * silently — no hours are ever attached to the wrong officer.
+ *
+ * Re-running it replaces the blocks it manages for the officers it matched, so
+ * pressing it twice cannot duplicate a schedule.
+ */
+export async function loadOfficerAvailability(): Promise<void> {
+  await requirePermission("content");
+  await ensureSchema();
+
+  const roster = await db
+    .select()
+    .from(officers)
+    .orderBy(asc(officers.displayOrder));
+
+  const { matched: matchedColumns, unmatched: unmatchedColumns } = matchEoColumns(
+    roster.map((officer) => ({
+      id: officer.id,
+      name: officer.name,
+      position: officer.position,
+      portfolio: officer.portfolio,
+      description: officer.description,
+      photoUrl: officer.photoUrl,
+      displayOrder: officer.displayOrder,
+      active: officer.active,
+    })),
+  );
+  const matched = matchedColumns.map(({ column, officer }) => ({
+    id: officer.id,
+    blocks: column.blocks,
+  }));
+  const unmatched = unmatchedColumns.map((column) => column.column);
+
+  if (matched.length === 0) {
+    redirect(
+      `/admin/officers?error=${encodeURIComponent(
+        "No officer on the roster matches the Executive Order columns — add the officers first, then load the schedule.",
+      )}`,
+    );
+  }
+
+  // Replace only what this loader manages, per matched officer.
+  for (const entry of matched) {
+    await db
+      .delete(officerAvailability)
+      .where(eq(officerAvailability.officerId, entry.id));
+    if (entry.blocks.length === 0) continue;
+    await db.insert(officerAvailability).values(
+      entry.blocks.map((block, position) => ({
+        officerId: entry.id,
+        kind: "weekly",
+        day: block.day,
+        date: "",
+        start: block.start,
+        end: block.end,
+        location: "",
+        note: `${EO_SCHEDULE.title} — no scheduled classes`,
+        displayOrder: position,
+      })),
+    );
+  }
+
+  const summary = encodeURIComponent(
+    unmatched.length > 0
+      ? `Loaded ${EO_SCHEDULE.title}: ${matched.length} officer${matched.length === 1 ? "" : "s"}, no match for ${unmatched.join(", ")}.`
+      : `Loaded ${EO_SCHEDULE.title} for ${matched.length} officer${matched.length === 1 ? "" : "s"}.`,
+  );
+  back(`/admin/officers?saved=1&loaded=${summary}`);
+}
+
+export async function clearOfficerAvailability(): Promise<void> {
+  await requirePermission("content");
+  await db.delete(officerAvailability);
+  back("/admin/officers?saved=1");
+}
+
+export async function deleteOfficerAvailability(form: FormData): Promise<void> {
+  await requirePermission("content");
+  await db
+    .delete(officerAvailability)
+    .where(eq(officerAvailability.id, str(form, "id")));
+  back("/admin/officers?saved=1");
 }
 
 export async function toggleOfficer(form: FormData): Promise<void> {

@@ -1206,7 +1206,11 @@ function ScheduleInfo({
     <div className="mt-12 border-t border-line pt-6">
       {isPlaceholder && (
         <p className="rounded-xl border border-vio-500/30 bg-vio-950/40 px-4 py-3 text-xs font-semibold leading-relaxed text-vio-200">
-          Showing placeholder schedule from <span className="font-mono">public/data/cssp-schedule.json</span>. Head admin can sync a custom Google Sheet (tabs = Room No.) in Admin → Roomivility to replace this with live data. Placeholders stay until you sync.
+          No schedule has been uploaded yet, so this is the built-in placeholder
+          sample from <span className="font-mono">public/data/cssp-schedule.json</span>.
+          Once the head admin syncs the official Google Sheet (tabs = Room No.)
+          in Admin → Roomivility, this sample disappears and the real schedule
+          takes its place.
         </p>
       )}
       {meta.stale && (
@@ -1288,8 +1292,19 @@ const TABS: Array<{ id: Tab; label: string; icon: typeof IconDoor }> = [
   { id: "table", label: "Table", icon: IconList },
 ];
 
-export default function RoomFinder() {
-  const schedule = useSchedule();
+export default function RoomFinder({
+  hasCustomData = false,
+  dataVersion = "",
+}: {
+  /** True when the council has uploaded/synced its own schedule (placeholders retired). */
+  hasCustomData?: boolean;
+  /** Last-sync stamp — changes bust the schedule API's CDN cache per sync. */
+  dataVersion?: string;
+}) {
+  const schedule = useSchedule({
+    placeholders: !hasCustomData,
+    version: dataVersion,
+  });
   const searchParams = useSearchParams();
 
   // useSearchParams can be null in non-router contexts; guard all reads.

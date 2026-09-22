@@ -4,6 +4,7 @@ import BackHome from "@/components/BackHome";
 import Reveal from "@/components/Reveal";
 import RoomFinder from "@/components/roomfinder/RoomFinder";
 import { getSiteVisibility } from "@/lib/server/siteVisibility";
+import { getRoomfinderSource } from "@/lib/server/queries";
 
 export const metadata: Metadata = {
   title: "Roomivility — CSSP Room Availability",
@@ -37,6 +38,10 @@ export default async function RoomFinderPage() {
     );
   }
 
+  // Once the council has its own schedule, the bundled placeholder sample is
+  // retired — the page renders only the real data (or an honest error state).
+  const source = await getRoomfinderSource();
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <div className="mb-8">
@@ -63,7 +68,10 @@ export default async function RoomFinderPage() {
             </div>
           }
         >
-          <RoomFinder />
+          <RoomFinder
+            hasCustomData={source.custom}
+            dataVersion={source.version}
+          />
         </Suspense>
       </Reveal>
     </div>
