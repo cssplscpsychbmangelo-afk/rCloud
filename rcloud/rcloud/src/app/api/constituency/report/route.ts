@@ -44,8 +44,18 @@ const MAX_SECTION = 60;
  */
 const REPORT_LIMIT = { limit: 15, windowMs: 10 * 60_000, blockMs: 10 * 60_000 };
 
-/** Reject oversized bodies before parsing — the payload is two short strings. */
+/**
+ * Reject oversized bodies before parsing — the payload is two short strings.
+ */
 const MAX_BODY_BYTES = 4_096;
+
+/**
+ * If the stored totals were synced this recently, they are treated as current
+ * and the Google round-trip is skipped entirely — the stored numbers cannot
+ * have changed meaningfully, and the student should not wait on Google for
+ * identical figures.
+ */
+const JUST_SYNCED_MS = 2 * 60_000;
 
 type Payload = { period: string; name: string; section: string };
 
@@ -119,6 +129,12 @@ export async function POST(request: Request) {
 
   // Read the selected tab straight from the Google Sheet; fall back to the
   // last synced figures if the Sheet is unreachable at this moment.
+  //
+  // This is the one step that can make the student wait on someone else's
+  // server, so it is skipped entirely when the stored numbers were synced
+  // moments ago — they are not going to be different. The read itself is
+  // memoized for 60 s (see readConstituencyTab), so repeat reports and several
+  // students opening the same period cost one Google request, not one each.
   let figures = {
     safe: stored.safe,
     baha: stored.baha,
@@ -127,7 +143,10 @@ export async function POST(request: Request) {
   let dataUpdatedAt =
     stored.syncedAt ?? settingsRows[0]?.lastSyncedAt ?? new Date();
   const sheetId = settingsRows[0]?.sheetId;
-  if (sheetId) {
+  const syncedAgoMs = stored.syncedAt
+    ? Date.now() - stored.syncedAt.getTime()
+    : Number.POSITIVE_INFINITY;
+  if (sheetId && syncedAgoMs > JUST_SYNCED_MS) {
     const live = await readConstituencyTab(sheetId, stored.label);
     if (live) {
       figures = live;

@@ -72,7 +72,7 @@ export const adminNav: AdminNavItem[] = [
     href: "/admin/roomfinder",
     label: "Roomivility",
     description:
-      "Connect the Roomivility Google Sheet — tabs are Room No. — and sync room schedules. Placeholders stay until you sync.",
+      "Connect the Roomivility Google Sheet — tabs are Room No. — and sync room schedules. Syncing retires the placeholder schedule.",
     perm: "roomfinder",
   },
   {

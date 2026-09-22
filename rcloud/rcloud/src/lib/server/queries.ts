@@ -8,6 +8,8 @@ import {
   projects,
   resources,
   budget,
+  roomfinderEntries,
+  roomfinderSettings,
 } from "./schema";
 import type {
   Announcement,
@@ -194,5 +196,54 @@ export async function getConstituency(): Promise<{
     };
   } catch {
     return { periods: [], lastSyncedAt: null };
+  }
+}
+
+/**
+ * Where the public Roomivility schedule comes from — the council's own
+ * upload/sync, or the bundled placeholder file.
+ *
+ * `custom` becomes true as soon as the council has its own schedule (a synced
+ * Sheet or an uploaded .xlsx/.csv/.json, even if that sync produced zero
+ * rows): the placeholder file is then retired everywhere, so students never
+ * see sample rooms next to real ones. It goes back to false only after
+ * "Clear & use placeholders" in Admin → Roomivility.
+ *
+ * `version` is the last-sync timestamp, used by the client as a cache key so a
+ * fresh upload is visible immediately instead of waiting out the schedule
+ * API's 5-minute CDN cache.
+ *
+ * Read-only and cheap: at most one indexed lookup on a single-row table, and
+ * it degrades to the placeholder behaviour when the DB is unreachable.
+ */
+export async function getRoomfinderSource(): Promise<{
+  custom: boolean;
+  version: string;
+}> {
+  try {
+    await ensureSchema();
+    const [settings] = await db
+      .select({
+        lastSyncedAt: roomfinderSettings.lastSyncedAt,
+        entryCount: roomfinderSettings.entryCount,
+      })
+      .from(roomfinderSettings)
+      .limit(1);
+
+    const syncedAt = settings?.lastSyncedAt ?? null;
+    const hasEntries =
+      (settings?.entryCount ?? 0) > 0 ||
+      (await db
+        .select({ id: roomfinderEntries.id })
+        .from(roomfinderEntries)
+        .limit(1)
+      ).length > 0;
+
+    return {
+      custom: hasEntries || syncedAt !== null,
+      version: syncedAt ? String(syncedAt.getTime()) : "static",
+    };
+  } catch {
+    return { custom: false, version: "static" };
   }
 }

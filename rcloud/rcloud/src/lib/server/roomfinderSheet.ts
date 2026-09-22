@@ -12,8 +12,11 @@
  * - Start/End: 08:00, 8:00 AM, 13:30, etc. Normalized to HH:MM 24h.
  * - Course/Section/Instructor/Building: optional, kept verbatim.
  *
- * Placeholders (public/data/cssp-schedule.json) are retained when no Sheet
- * has been synced yet — the DB being empty triggers the client fallback.
+ * Placeholders (public/data/cssp-schedule.json) are only used while the
+ * council has no schedule of its own. The moment a Sheet is synced or a file
+ * is uploaded, getRoomfinderSource() reports custom data and the client drops
+ * the placeholder — the DB being empty after that shows an honest empty state
+ * instead of sample rooms.
  */
 
 import { unzipSync } from "fflate";

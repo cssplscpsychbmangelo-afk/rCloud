@@ -18,8 +18,29 @@ import { unzipSync } from "fflate";
 
 const SHEET_ID_PATTERN = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
 const FETCH_TIMEOUT_MS = 20_000;
-/** Shorter budget for on-demand single-tab reads (PDF report generation). */
-const REPORT_FETCH_TIMEOUT_MS = 8_000;
+/**
+ * Shorter budget for on-demand single-tab reads (PDF report generation).
+ * A report must never wait long on Google: the last synced figures are always
+ * available as a fallback, so waiting longer only makes the student wait.
+ */
+const REPORT_FETCH_TIMEOUT_MS = 4_000;
+/** How long a live Total row may be reused before Google is asked again. */
+const LIVE_TTL_MS = 60_000;
+/**
+ * How long a failed read is remembered. Without this, one slow Google response
+ * would make every report for the next while wait out the timeout before
+ * falling back to the stored figures — the report would be no worse, just
+ * needlessly slow. After the first failure the stored figures are used at once.
+ */
+const LIVE_FAILURE_TTL_MS = 30_000;
+/** Upper bound on cached tabs (one entry per tab a period was opened on). */
+const LIVE_CACHE_MAX = 64;
+
+export type ConstituencyTotals = {
+  safe: number;
+  baha: number;
+  internet: number;
+};
 
 /** Column letter → the label shown on the public site. */
 export const COLUMN_LABELS = {
@@ -224,11 +245,7 @@ export function parseCsv(text: string): string[][] {
 const TOTAL_ROW_PATTERN = /^\s*total\s*\(\s*all\s+sections\s*\)\s*$/i;
 
 /** Reads only the Total (All Sections) row — columns B, C and E. */
-export function readTotalsFromCsv(csv: string): {
-  safe: number;
-  baha: number;
-  internet: number;
-} | null {
+export function readTotalsFromCsv(csv: string): ConstituencyTotals | null {
   const rows = parseCsv(csv);
   const totalRow = rows.find((cells) => TOTAL_ROW_PATTERN.test(cells[0] ?? ""));
   if (!totalRow) return null;
@@ -256,12 +273,76 @@ function toTotal(raw: string | undefined): number | null {
  * contents of the selected tab. Returns null when the tab cannot be reached or
  * read — callers then fall back to the last synced values instead of failing.
  * Only the Total row's columns B, C and E are ever looked at.
+ *
+ * Cheap by design: the last synced figures are always a valid answer, so this
+ * read must never be the reason a student waits. Results are therefore
+ *   - reused for LIVE_TTL_MS (so generating a report twice, or several students
+ *     opening the same period, costs one Google request, not one each),
+ *   - de-duplicated while a request for the same tab is in flight, and
+ *   - remembered briefly when it fails (LIVE_FAILURE_TTL_MS), so one slow
+ *     Google response cannot make the following reports wait too.
  */
 export async function readConstituencyTab(
   sheetId: string,
   tab: string,
   timeoutMs: number = REPORT_FETCH_TIMEOUT_MS,
-): Promise<{ safe: number; baha: number; internet: number } | null> {
+): Promise<ConstituencyTotals | null> {
+  const key = `${sheetId}\u0000${tab}`;
+  const cached = readLiveCache(key);
+  if (cached) return cached.totals;
+  return (inFlight.get(key) ?? startLiveRead(key, sheetId, tab, timeoutMs));
+}
+
+type LiveEntry = {
+  at: number;
+  /** null = the read failed; remembered briefly so a slow Google is not retried. */
+  totals: ConstituencyTotals | null;
+};
+
+const liveCache = new Map<string, LiveEntry>();
+const inFlight = new Map<string, Promise<ConstituencyTotals | null>>();
+
+function readLiveCache(key: string): LiveEntry | null {
+  const hit = liveCache.get(key);
+  if (!hit) return null;
+  const ttl = hit.totals ? LIVE_TTL_MS : LIVE_FAILURE_TTL_MS;
+  if (Date.now() - hit.at >= ttl) {
+    liveCache.delete(key);
+    return null;
+  }
+  // Re-insert so the cap always evicts the least recently used entry.
+  liveCache.delete(key);
+  liveCache.set(key, hit);
+  return hit;
+}
+
+function startLiveRead(
+  key: string,
+  sheetId: string,
+  tab: string,
+  timeoutMs: number,
+): Promise<ConstituencyTotals | null> {
+  const pending = fetchTabTotals(sheetId, tab, timeoutMs)
+    .then((totals) => {
+      liveCache.set(key, { at: Date.now(), totals });
+      if (liveCache.size > LIVE_CACHE_MAX) {
+        const oldest = liveCache.keys().next().value;
+        if (oldest !== undefined) liveCache.delete(oldest);
+      }
+      return totals;
+    })
+    .finally(() => {
+      inFlight.delete(key);
+    });
+  inFlight.set(key, pending);
+  return pending;
+}
+
+async function fetchTabTotals(
+  sheetId: string,
+  tab: string,
+  timeoutMs: number,
+): Promise<ConstituencyTotals | null> {
   let csv: string;
   try {
     csv = await getSheetText(

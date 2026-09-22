@@ -29,6 +29,31 @@ const FIELDS: Array<{
 const inputCls =
   "h-11 w-full rounded-xl border border-line bg-panel px-3.5 text-sm font-semibold text-snow placeholder:font-normal placeholder:text-dim focus:border-vio-500 focus:outline-none";
 
+/**
+ * Fills the freshly opened preview tab with a "preparing" note. The tab is
+ * same-origin `about:blank`, so this replaces an empty page with something the
+ * student can read while the PDF is generated — the report URL then replaces
+ * this document.
+ */
+function writePreviewPlaceholder(preview: Window | null) {
+  if (!preview) return;
+  try {
+    preview.document.write(
+      `<!doctype html><html><head><meta charset="utf-8"><title>Preparing your report…</title></head>
+       <body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0a10;color:#c9c5d6;font:600 14px/1.6 system-ui,sans-serif">
+         <div style="text-align:center;max-width:26rem;padding:1.5rem">
+           <p style="margin:0 0 .5rem;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#a78bfa">Constituency Check</p>
+           <p style="margin:0;color:#f2f0f7">Preparing your PDF report…</p>
+           <p style="margin:.5rem 0 0;font-weight:400;font-size:12px">This usually takes a few seconds. Please keep this tab open.</p>
+         </div>
+       </body></html>`,
+    );
+    preview.document.close();
+  } catch {
+    // Cross-origin or blocked — the PDF simply replaces it as before.
+  }
+}
+
 const FALLBACK_FILENAME = "CSSP_LSC_Constituency_Check.pdf";
 
 type BuiltReport = { url: string; key: string; filename: string };
@@ -83,7 +108,7 @@ export default function ConstituencyBrowser({
     }
 
     setStatus("busy");
-    setMessage("Preparing your report…");
+    setMessage("Preparing your report… this usually takes a few seconds.");
     try {
       const response = await fetch("/api/constituency/report", {
         method: "POST",
@@ -124,7 +149,10 @@ export default function ConstituencyBrowser({
   async function handleGenerate() {
     // Open the tab inside the click gesture, then point it at the PDF once it
     // exists — avoids popup blockers and never leaves a blank tab behind.
+    // The tab is filled with a short "preparing" note first, so the student
+    // sees progress instead of a blank page while the server renders.
     const preview = window.open("", "_blank");
+    writePreviewPlaceholder(preview);
     const report = await buildReport();
     if (!report) {
       preview?.close();

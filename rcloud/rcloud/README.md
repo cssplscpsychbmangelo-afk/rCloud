@@ -192,17 +192,37 @@ details and the timestamps change.
   individual responses, names, student numbers, emails, phone numbers or
   per-section rows.
 - Cost: browsing the site costs the same as before — the report endpoint only
-  runs when someone clicks Generate/Download. Each report is one ~2 KB Google
-  Sheets request plus a ~70 KB PDF; the logo is read and downscaled once per
-  server process (512 px → 256 px, still ~370 dpi when printed) instead of
-  being embedded full-size, which keeps a report at ~70 KB rather than ~213 KB.
-  Logo resolution prefers the on-disk `public/` file, then the app's own
-  origin, and finally falls back to a pre-downscaled copy bundled in the
-  server code — so the report can always be prepared even when a serverless
-  host rewrites `request.url` and blocks the self-fetch.
+  runs when someone clicks Generate/Download. Each report is one Google Sheets
+  request plus a ~73 KB PDF; the logo is embedded at 256 px (still ~370 dpi
+  when printed) instead of full-size, which keeps a report at ~73 KB rather
+  than ~213 KB.
 - The Sheet must be shared as "Anyone with the link — Viewer" (no API key or
   service account required; the reader only uses the public read endpoints and
   keeps the Sheet URL out of public markup).
+
+### Why the report comes back quickly
+
+Generating a report is the only rCloud request that does real work, so it is
+kept short and bounded:
+
+- **The logo never costs the request anything.** The pre-downscaled 256 px PNG
+  is shipped inside the server bundle (`src/lib/server/reportLogoBase64.ts`)
+  and decoded from base64 — no 512 px decode/resize on the request path. If
+  that copy is ever missing, the on-disk `public/` file is used (and downscaled
+  once per process), then the app's own origin. All three paths were verified to
+  produce the same PNG bytes.
+- **The Sheet read is bounded and memoized.** The selected tab is read with a
+  4 s budget (the last synced figures are always a valid fallback, so a slow
+  Google must never become a slow report), the result is reused for 60 s, and
+  concurrent requests for the same tab share one in-flight request. When the
+  stored totals were synced in the last 2 minutes, the round-trip is skipped
+  entirely — the numbers cannot have changed.
+- **Only the fonts that are drawn are embedded** (Helvetica + Helvetica-Bold).
+  Every extra standard font cost a decode on the process's first report and
+  travelled inside every generated PDF.
+- Both optimizations are layout-neutral: with the old and new code rendering
+  the same input, every PDF content stream is byte-identical and only the
+  unused font object is gone.
 
 ## Roomivility (CSSP Room Finder)
 
@@ -219,6 +239,14 @@ booking or room-management system — no accounts, no tracking, no writes.
   sorting and availability checks all run in the browser. No database, no
   per-search requests, no polling/WebSockets — effectively free to host on
   Netlify's free tier.
+- **Placeholders retire after the first upload.** While the council has no
+  schedule of its own, `/room-finder` and the homepage teaser show a clearly
+  labelled sample from `public/data/cssp-schedule.json`. The moment a Google
+  Sheet is synced or an .xlsx / .csv / .json file is uploaded, that sample is
+  retired: the page reads only the uploaded schedule, any sample copy cached in
+  a visitor's browser is discarded, and a network failure shows an honest
+  "could not be loaded" state instead of sample rooms. "Clear & use
+  placeholders" in Admin — Roomivility is the only way back.
 - **Offline-friendly.** After the first successful load the dataset is cached
   in `localStorage`; if the connection drops the Room Finder keeps working
   from the cache and clearly shows "Using the most recently loaded schedule."
@@ -232,8 +260,14 @@ booking or room-management system — no accounts, no tracking, no writes.
 
 ### Updating the schedule (administrator workflow)
 
-Edit **only** `public/data/cssp-schedule.json` and redeploy — no code changes
-are needed:
+Two ways, in order of preference:
+
+1. **Admin — Roomivility** (recommended, no redeploy): save the official Google
+   Sheet link (tabs = Room No.) or upload an `.xlsx` / `.csv` / `.json` file,
+   then refresh. Syncing retires the placeholder sample automatically.
+2. **Edit `public/data/cssp-schedule.json`** and redeploy. This only applies
+   while the council has not uploaded a schedule of its own — the file is
+   the fallback shown before the first sync, not a second source of truth.
 
 ```json
 {

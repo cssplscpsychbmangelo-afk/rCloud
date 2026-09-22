@@ -141,7 +141,13 @@ export function toWinAnsiSafe(value: string): string {
     );
 }
 
-type Fonts = { regular: PDFFont; bold: PDFFont; oblique: PDFFont };
+/**
+ * Fonts the report actually draws with. Only these two are embedded: every
+ * extra standard font costs a decode on the process's first report (the
+ * request that pays the cold start), and an unused face would also travel in
+ * every generated PDF.
+ */
+type Fonts = { regular: PDFFont; bold: PDFFont };
 
 type Ctx = {
   doc: PDFDocument;
@@ -813,17 +819,16 @@ export async function renderConstituencyReport(
   input: ConstituencyReportInput,
 ): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  const [regular, bold, oblique] = await Promise.all([
+  const [regular, bold] = await Promise.all([
     doc.embedFont(StandardFonts.Helvetica),
     doc.embedFont(StandardFonts.HelveticaBold),
-    doc.embedFont(StandardFonts.HelveticaOblique),
   ]);
 
   const reportPeriod = toWinAnsiSafe(input.reportPeriod);
   const firstPage = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   const ctx: Ctx = {
     doc,
-    fonts: { regular, bold, oblique },
+    fonts: { regular, bold },
     pages: [firstPage],
     page: firstPage,
     y: PAGE_HEIGHT,

@@ -18,12 +18,24 @@ import { btnGhost, btnPrimary } from "@/components/Primitives";
  * Homepage strip for the CSSP Room Finder.
  *
  * Shows a live "right now" snapshot computed in the browser from the same
- * small static dataset the Room Finder page uses (one fetch, then everything
- * is local). If the dataset cannot be loaded, the quick search and buttons
- * still work — only the live numbers are hidden.
+ * dataset the Room Finder page uses (one fetch, then everything is local) —
+ * the council's uploaded schedule when one exists, otherwise the bundled
+ * placeholder sample. If the dataset cannot be loaded, the quick search and
+ * buttons still work — only the live numbers are hidden.
  */
-export default function RoomFinderTeaser() {
-  const { data } = useSchedule();
+export default function RoomFinderTeaser({
+  hasCustomData = false,
+  dataVersion = "",
+}: {
+  /** True when the council has uploaded/synced its own schedule (placeholders retired). */
+  hasCustomData?: boolean;
+  /** Last-sync stamp — changes bust the schedule API's CDN cache per sync. */
+  dataVersion?: string;
+}) {
+  const { data } = useSchedule({
+    placeholders: !hasCustomData,
+    version: dataVersion,
+  });
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {

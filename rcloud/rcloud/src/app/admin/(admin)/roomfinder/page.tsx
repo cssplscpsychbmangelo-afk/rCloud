@@ -54,12 +54,19 @@ export default async function AdminRoomfinderPage({
   const totalCount = settings?.entryCount ?? rows.length;
   const sheetId = settings?.sheetId ?? "";
   const tabErrors = (settings?.tabErrors ?? "").split("\n").filter(Boolean);
+  // The council's own schedule exists as soon as a sync/upload has been
+  // recorded — from that moment the placeholder sample is retired on the site.
+  const hasOwnSchedule = settings?.lastSyncedAt != null || rows.length > 0;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Roomivility — Room Schedule"
-        description="Upload a Google Sheet where each tab is a Room No. (e.g. 201, 202, 301). Inside each tab, put Day, Start, End, Course, Section columns. The site auto-detects rooms from tab names. Placeholders (public/data/cssp-schedule.json) stay until you sync a sheet."
+        description={
+          hasOwnSchedule
+            ? "Upload a Google Sheet where each tab is a Room No. (e.g. 201, 202, 301). Inside each tab, put Day, Start, End, Course, Section columns. The site auto-detects rooms from tab names. Your schedule is live — the placeholder sample (public/data/cssp-schedule.json) is retired and no longer shown to students."
+            : "Upload a Google Sheet where each tab is a Room No. (e.g. 201, 202, 301). Inside each tab, put Day, Start, End, Course, Section columns. The site auto-detects rooms from tab names. Placeholders (public/data/cssp-schedule.json) stay until you sync a sheet."
+        }
       />
 
       {params?.saved && <Notice>Google Sheet link saved.</Notice>}
@@ -159,9 +166,17 @@ export default async function AdminRoomfinderPage({
                 ? `Last synced: ${formatSyncedAt(settings.lastSyncedAt)} · ${settings.tabCount} room${settings.tabCount === 1 ? "" : "s"} · ${settings.entryCount} entries`
                 : "Never synced yet — placeholders from /data/cssp-schedule.json are being used."}
             </p>
-            {!settings?.lastSyncedAt && (
+            {settings?.lastSyncedAt ? (
               <p className="mt-1 text-[11px] text-dim">
-                Placeholders stay active until you sync a Sheet or upload a file. The Room Finder works offline once loaded.
+                Students see this schedule — the placeholder sample is no longer
+                used anywhere on the site. “Clear &amp; use placeholders” brings
+                it back. The Room Finder works offline once loaded.
+              </p>
+            ) : (
+              <p className="mt-1 text-[11px] text-dim">
+                Placeholders stay active until you sync a Sheet or upload a file,
+                then they disappear from the Room Finder and the homepage
+                automatically. The Room Finder works offline once loaded.
               </p>
             )}
           </div>
@@ -219,7 +234,11 @@ export default async function AdminRoomfinderPage({
             ))}
             {rows.length === 0 && (
               <tr>
-                <Td className="text-dim">No custom entries yet — placeholders from static JSON are active. Sync a Sheet or upload .xlsx to see data here.</Td>
+                <Td className="text-dim">
+                  {hasOwnSchedule
+                    ? "No entries stored — the last sync/upload produced zero rows, so students see an empty schedule (placeholders are retired)."
+                    : "No custom entries yet — placeholders from static JSON are active. Sync a Sheet or upload .xlsx to see data here."}
+                </Td>
                 <Td /><Td /><Td /><Td /><Td />
               </tr>
             )}
