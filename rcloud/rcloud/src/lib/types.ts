@@ -56,6 +56,31 @@ export interface Officer {
   active: boolean;
 }
 
+/**
+ * One published availability block for an officer (duty / consultation hours).
+ *
+ * Two shapes are supported because a council order can publish either:
+ *  - `day` set        → repeats every week on that weekday ("weekly")
+ *  - `date` set       → happens once on that calendar date ("date")
+ * Times are 24-hour "HH:MM" and every field is displayed verbatim.
+ */
+export interface OfficerAvailability {
+  id: string;
+  officerId: string;
+  kind: "weekly" | "date";
+  /** Monday…Sunday when `kind` is "weekly", otherwise "". */
+  day: string;
+  /** "YYYY-MM-DD" when `kind` is "date", otherwise "". */
+  date: string;
+  /** 24-hour "HH:MM". */
+  start: string;
+  end: string;
+  /** Where the officer can be found (empty when the source gives none). */
+  location: string;
+  /** Free note shown verbatim (empty when the source gives none). */
+  note: string;
+}
+
 export interface ConstituencyPeriod {
   id: string;
   /** Google Sheet tab name — displayed verbatim as the date/date-range. */

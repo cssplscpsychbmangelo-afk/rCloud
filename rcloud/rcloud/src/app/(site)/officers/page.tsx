@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Reveal from "@/components/Reveal";
 import BackHome from "@/components/BackHome";
-import { OfficerCard } from "@/components/Cards";
+import OfficersBoard from "@/components/officers/OfficersBoard";
 import HiddenPage from "@/components/HiddenPage";
 import { site } from "@/lib/data/site";
 import { getOfficers } from "@/lib/server/queries";
@@ -26,7 +27,7 @@ export default async function OfficersPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+    <div id="officers-top" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-16 sm:px-6">
       <div className="mb-8">
         <BackHome />
       </div>
@@ -43,13 +44,25 @@ export default async function OfficersPage() {
         </p>
       </Reveal>
 
-      <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {officers.map((officer, index) => (
-          <Reveal key={officer.id} delay={(index % 3) * 80}>
-            <OfficerCard officer={officer} />
-          </Reveal>
-        ))}
-      </div>
+      <Reveal delay={80} className="mt-10">
+        <Suspense
+          fallback={
+            <div className="rounded-[20px] border border-line bg-panel px-6 py-12 text-center">
+              <p className="text-sm font-semibold text-mist">
+                Loading the roster…
+              </p>
+            </div>
+          }
+        >
+          <OfficersBoard officers={officers} />
+        </Suspense>
+      </Reveal>
+
+      {officers.length === 0 && (
+        <p className="mt-6 rounded-[20px] border border-line bg-panel px-6 py-12 text-center text-sm text-mist">
+          The roster for AY {site.term} has not been published yet.
+        </p>
+      )}
     </div>
   );
 }
