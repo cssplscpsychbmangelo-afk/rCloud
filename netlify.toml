@@ -5,6 +5,12 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # Next 16's Turbopack build cache (.next/cache/turbopack/*.sst) serializes
+  # the build-time environment, including the *values* of secret env vars.
+  # Netlify's secrets scanner reads those cache files and would fail the
+  # deploy even though the cache is never published. Exempt ONLY the cache
+  # paths — the rest of the build output and repo files stay scanned.
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache/**,.next/cache/**"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

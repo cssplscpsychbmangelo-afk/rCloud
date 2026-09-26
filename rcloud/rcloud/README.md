@@ -129,9 +129,14 @@ in [`../../SECURITY.md`](../../SECURITY.md).
      `https://rcloud.netlify.app` — this is what the canonical `<link>`, the
      sitemap, the footer's "official site" line and the anti-copycat
      declarations are built from
-   - `AUTH_SECRET` = any long random string (`openssl rand -hex 32`); the
-     session implementation does not read it today, it is kept for future
-     signed-token work. All three are placeholders in `.env.example`.
+   - `AUTH_SECRET` = any long random string (`openssl rand -hex 32`). The
+     session implementation does not read it today — it is kept for future
+     signed-token work. You may skip it entirely until that code lands;
+     if you do set it, `netlify.toml` already exempts the Turbopack build
+     cache from Netlify's secrets scan (Next 16 writes env *values* into
+     `.next/cache/turbopack/*.sst`, which would otherwise fail the deploy).
+     `DATABASE_URL` and `NEXT_PUBLIC_SITE_URL` are placeholders in
+     `.env.example` (`AUTH_SECRET` is optional).
 4. Push the schema + seed once against that database:
    `DATABASE_URL=… npm run db:push && DATABASE_URL=… npm run db:seed`
    (run from any machine with Node; afterwards log in and change the dev
